@@ -1,0 +1,37 @@
+apiVersion: v1alpha1
+kind: Role
+metadata:
+  name: lottery-role-view
+  labels:
+    halo.run/role-template: "true"
+  annotations:
+    rbac.authorization.halo.run/display-name: "抽奖查看"
+    rbac.authorization.halo.run/module: "抽奖管理"
+    rbac.authorization.halo.run/ui-permissions: |
+      ["plugin:lottery:view"]
+rules:
+  - apiGroups: ["lottery.xhhao.com"]
+    resources: ["lotteryactivities", "lotteryparticipants"]
+    verbs: ["get", "list"]
+---
+apiVersion: v1alpha1
+kind: Role
+metadata:
+  name: lottery-role-manage
+  labels:
+    halo.run/role-template: "true"
+  annotations:
+    rbac.authorization.halo.run/display-name: "抽奖管理"
+    rbac.authorization.halo.run/module: "抽奖管理"
+    rbac.authorization.halo.run/ui-permissions: |
+      ["plugin:lottery:manage"]
+    rbac.authorization.halo.run/dependencies: |
+      ["lottery-role-view"]
+rules:
+  - apiGroups: ["lottery.xhhao.com"]
+    resources: ["lotteryactivities", "lotteryparticipants"]
+    verbs: ["create", "update", "patch", "delete"]
+  # 开奖是 lotteryactivities 的子资源操作
+  - apiGroups: ["lottery.xhhao.com"]
+    resources: ["lotteryactivities/draw"]
+    verbs: ["update"]

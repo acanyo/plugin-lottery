@@ -1,0 +1,327 @@
+package site.muyin.tools.utils;
+
+import cn.hutool.core.util.CharsetUtil;
+import cn.hutool.core.util.IdUtil;
+import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.ReUtil;
+import cn.hutool.crypto.SecureUtil;
+import cn.hutool.crypto.digest.DigestUtil;
+import cn.hutool.crypto.symmetric.AES;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.server.ServerRequest;
+import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebSession;
+import reactor.core.publisher.Mono;
+import site.muyin.core.payment.enums.PaymentChannel;
+import site.muyin.core.payment.enums.PaymentType;
+import site.muyin.tools.enums.RestrictType;
+
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static site.muyin.tools.constant.CommonConstant.Headers.NOLOGIN_EMAIL;
+import static site.muyin.tools.constant.CommonConstant.Headers.SESSION;
+import static site.muyin.tools.constant.CommonConstant.Headers.WECHAT_SESSION_ID;
+import static site.muyin.tools.constant.CommonConstant.Headers.XSRF_TOKEN;
+
+/**
+ * @author <a href="https://lywq.muyin.site">lywq</a>
+ * @since 2024/02/24 15:41
+ **/
+@Component
+public class CommonUtil {
+
+    /**
+     * 获取域名
+     *
+     * @param urlString
+     * @return
+     */
+    public static String getDomain(String urlString) {
+        try {
+            // 创建URL对象
+            URL url = new URL(urlString);
+
+            // 获取域名部分
+            String domain = url.getHost();
+
+            return domain;
+        } catch (MalformedURLException e) {
+            // URL格式不正确
+            return "Invalid URL: " + e.getMessage();
+        }
+    }
+
+    /**
+     * 校验是否是url
+     *
+     * @param urlString
+     * @return
+     */
+    public static boolean isValidUrl(String urlString) {
+        URI uri = null;
+        try {
+            uri = new URI(urlString);
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+            return false;
+        }
+        if (uri.getHost() == null) {
+            return false;
+        }
+        if (uri.getScheme().equalsIgnoreCase("http") || uri.getScheme().equalsIgnoreCase("https")) {
+            return true;
+        }
+        return false;
+    }
+
+
+    /**
+     * 获取sessionId
+     *
+     * @param request:
+     * @return: java.lang.String
+     * @author <a href="https://lywq.muyin.site">lywq</a>
+     * @since 2024/06/04 11:28
+     **/
+    public static String getSessionId(ServerRequest request) {
+        String sessionId = "";
+        if (ObjectUtil.isNotEmpty(request.exchange().getRequest().getCookies()) && ObjectUtil.isNotEmpty(request.exchange().getRequest().getCookies().getFirst(SESSION))) {
+            sessionId = Objects.requireNonNull(request.exchange().getRequest().getCookies().getFirst(SESSION)).getValue();
+        }
+        if (ObjectUtil.isNotEmpty(request.exchange().getRequest().getHeaders()) && ObjectUtil.isNotEmpty(request.exchange().getRequest().getHeaders().getFirst(WECHAT_SESSION_ID))) {
+            sessionId = request.exchange().getRequest().getHeaders().getFirst(WECHAT_SESSION_ID);
+        }
+        if (ObjectUtil.isNotEmpty(request.exchange().getRequest().getCookies()) && ObjectUtil.isNotEmpty(request.exchange().getRequest().getCookies().getFirst(XSRF_TOKEN))) {
+            sessionId = Objects.requireNonNull(request.exchange().getRequest().getCookies().getFirst(XSRF_TOKEN)).getValue();
+        }
+        return sessionId;
+    }
+
+    /**
+     * 获取当前session
+     *
+     * @return: reactor.core.publisher.Mono<java.lang.String>
+     * @author <a href="https://lywq.muyin.site">lywq</a>
+     * @since 2024/06/04 11:28
+     **/
+    public static Mono<String> getCurrentSession() {
+        return ReactiveSecurityContextHolder.getContext().flatMap((securityContext) -> Mono.deferContextual(Mono::just).filter((contextView) -> contextView != null).flatMap((contextView) -> {
+            Mono<WebSession> session = (contextView.get(ServerWebExchange.class)).getSession();
+            ServerHttpRequest request = (contextView.get(ServerWebExchange.class)).getRequest();
+            String wechatSessionId = request.getHeaders().getFirst(WECHAT_SESSION_ID);
+            String xsrfToken = ObjectUtil.isNotEmpty(request.getCookies().getFirst(XSRF_TOKEN)) ? request.getCookies().getFirst(XSRF_TOKEN).getValue() : "";
+            if (ObjectUtil.isNotEmpty(wechatSessionId)) {
+                return Mono.just(wechatSessionId);
+            }
+            if (ObjectUtil.isNotEmpty(xsrfToken)) {
+                return Mono.just(xsrfToken);
+            }
+            return session.flatMap((webSession) -> {
+                String currentSession = webSession.getId();
+                return Mono.just(currentSession);
+            });
+        }));
+    }
+
+    /**
+     * 获取未登录邮箱
+     * 如果上下文存在用户信息则返回用户名称，如果没有则获取cookie或header中的email
+     * 优先从 cookie 获取，如果 cookie 中没有则从 header 获取
+     * 使用 flatMap 和 Mono.deferContextual 确保 Context 链不断开
+     * 过滤掉 anonymousUser，如果是 anonymousUser 则从 cookie 或 header 获取
+     *
+     * @return reactor.core.publisher.Mono<java.lang.String>
+     * @author <a href="https://lywq.muyin.site">lywq</a> (https://lywq.muyin.site)
+     * @since 2025/05/15 20:20
+     **/
+    public static Mono<String> getNologinEmail() {
+        return ReactiveSecurityContextHolder.getContext()
+                .flatMap(securityContext -> {
+                    Authentication authentication = securityContext.getAuthentication();
+                    if (authentication != null
+                        && !(authentication instanceof AnonymousAuthenticationToken)
+                        && authentication.isAuthenticated()) {
+                        String userName = authentication.getName();
+                        if (ObjectUtil.isNotEmpty(userName) && !"anonymousUser".equals(userName)) {
+                            return Mono.just(userName);
+                        }
+                    }
+                    return getEmailFromCookie();
+                })
+                .switchIfEmpty(getEmailFromCookie())
+                .defaultIfEmpty("");
+    }
+
+    /**
+     * 从 cookie 或 header 中获取未登录邮箱
+     * 优先从 cookie 获取，如果 cookie 中没有则从 header 获取
+     * 使用 Mono.deferContextual 确保 Context 链不断开
+     *
+     * @return reactor.core.publisher.Mono<java.lang.String>
+     * @author <a href="https://lywq.muyin.site">lywq</a> (https://lywq.muyin.site)
+     * @since 2025/05/15 20:20
+     **/
+    private static Mono<String> getEmailFromCookie() {
+        return Mono.deferContextual(Mono::just)
+                .filter(Objects::nonNull)
+                .map(contextView -> contextView.get(ServerWebExchange.class))
+                .flatMap(exchange -> {
+                    String nologinEmail = "";
+                    try {
+                        ServerHttpRequest request = exchange.getRequest();
+                        if (ObjectUtil.isNotEmpty(request.getCookies())) {
+                            nologinEmail = request.getCookies().entrySet().stream()
+                                    .filter(entry -> entry.getKey().equalsIgnoreCase(NOLOGIN_EMAIL))
+                                    .findFirst()
+                                    .map(entry -> entry.getValue().getFirst().getValue())
+                                    .orElse("");
+                        }
+                        if (ObjectUtil.isEmpty(nologinEmail)
+                            && ObjectUtil.isNotEmpty(request.getHeaders())) {
+                            nologinEmail = request.getHeaders().entrySet().stream()
+                                    .filter(entry -> entry.getKey().equalsIgnoreCase(NOLOGIN_EMAIL))
+                                    .findFirst()
+                                    .map(entry -> entry.getValue().getFirst())
+                                    .orElse("");
+                        }
+                    } catch (Exception e) {
+                    }
+                    return Mono.just(nologinEmail);
+                })
+                .defaultIfEmpty("");
+    }
+
+    /**
+     * 获取限制阅读缓存key
+     *
+     * @param restrictType
+     * @param templateType
+     * @param sessionId
+     * @param id
+     * @return java.lang.String
+     * @author <a href="https://lywq.muyin.site">lywq</a>
+     * @since 2025/11/25 19:06
+     **/
+    public static String getRestrictReadCacheKey(RestrictType restrictType, String templateType, String sessionId, String id) {
+        String type = restrictType.getType();
+        return "RestrictRead:" + templateType + "_" + type + "_" + sessionId + "_" + id;
+    }
+
+
+    /**
+     * 替换指定HTML标签及其内容
+     *
+     * @param html:        原始HTML
+     * @param tagName:     目标标签名
+     * @param replacement: 替换内容
+     * @return java.lang.String
+     * @author <a href="https://lywq.muyin.site">lywq</a> (https://lywq.muyin.site)
+     * @since 2025/04/30 15:50
+     **/
+    public static String replaceHtmlTag(String html, String tagName, String replacement) {
+        String regex = String.format("(?s)<%s\\b[^>]*>.*?</%s>", tagName, tagName);
+        return ReUtil.replaceAll(html, regex, replacement);
+    }
+
+    /**
+     * 截取指定HTML标签之前的内容（包含标签内容）
+     *
+     * @param html:    原始HTML
+     * @param tagName: 目标标签名
+     * @return java.lang.String
+     * @author <a href="https://lywq.muyin.site">lywq</a> (https://lywq.muyin.site)
+     * @since 2025/04/30 16:27
+     **/
+    public static String getContentBeforeTag(String html, String tagName) {
+        // 参数校验
+        if (html == null || html.isEmpty() || tagName == null || tagName.isEmpty()) {
+            return null;
+        }
+
+        // 构建正则表达式（匹配成对标签和自闭合标签）
+        String regex = String.format(
+                "(?si)<%s\\b[^>]*>(.*?)</%s>|" +  // 成对标签（非贪婪匹配）
+                "<%s\\b[^>]*/>",                  // 自闭合标签
+                tagName, tagName, tagName
+        );
+
+        Pattern pattern = Pattern.compile(regex, Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(html);
+
+        // 查找第一个匹配项
+        if (matcher.find()) {
+            // 返回从开始到匹配项结尾的内容
+            return html.substring(0, matcher.end());
+        } else {
+            return html;
+        }
+    }
+
+
+    /**
+     * 获取支付订单id
+     *
+     * @return java.lang.String
+     * @author <a href="https://lywq.muyin.site">lywq</a> (https://lywq.muyin.site)
+     * @since 2025/05/06 18:11
+     **/
+    public static String getPayOrderId() {
+        return IdUtil.simpleUUID();
+    }
+
+    /**
+     * 加密密码
+     *
+     * @param password:
+     * @return java.lang.String
+     * @author <a href="https://lywq.muyin.site">lywq</a> (https://lywq.muyin.site)
+     * @since 2025/05/12 15:58
+     **/
+    public static String encryptPassword(String password, String key) {
+        byte[] sha256Bytes = DigestUtil.sha256(key.getBytes());
+        AES aes = SecureUtil.aes(sha256Bytes);
+        return aes.encryptHex(password);
+    }
+
+    /**
+     * 解密密码
+     *
+     * @param password:
+     * @param key:
+     * @return java.lang.String
+     * @author <a href="https://lywq.muyin.site">lywq</a> (https://lywq.muyin.site)
+     * @since 2025/05/12 16:01
+     **/
+    public static String decryptPassword(String password, String key) {
+        byte[] sha256Bytes = DigestUtil.sha256(key.getBytes());
+        AES aes = SecureUtil.aes(sha256Bytes);
+        return aes.decryptStr(password, CharsetUtil.CHARSET_UTF_8);
+    }
+
+    /**
+     * 根据支付渠道获取支付类型
+     *
+     * @param paymentChannel:
+     * @return site.muyin.payment.enums.PaymentType
+     * @author <a href="https://lywq.muyin.site">lywq</a> (https://lywq.muyin.site)
+     * @since 2025/07/21 18:39
+     **/
+    public static PaymentType getPaymentType(PaymentChannel paymentChannel) {
+        return switch (paymentChannel) {
+            case FACE_TO_FACE_PAYMENT, QR_CODE_OFFLINE, QUICK_WAP_WAY, FAST_INSTANT_TRADE_PAY -> PaymentType.ALIPAY;
+            case EPAY_ALIPAY, EPAY_WECHAT -> PaymentType.EPAY;
+            case WECHATPAY_H5, WECHATPAY_JSAPI, WECHATPAY_NATIVE -> PaymentType.WECHATPAY;
+            default -> PaymentType.ALIPAY;
+        };
+    }
+}

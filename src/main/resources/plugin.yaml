@@ -1,0 +1,22 @@
+# Refer https://docs.halo.run/developer-guide/plugin/basics/manifest
+
+apiVersion: plugin.halo.run/v1alpha1
+kind: Plugin
+metadata:
+  # The name defines how the plugin is invoked, A unique name
+  name: lottery
+spec:
+  enabled: true
+  requires: ">=2.22.0"
+  author:
+    name: Handsome
+    website: https://github.com/Handsome
+  logo: logo.png
+  homepage: https://github.com/Handsome/lottery#readme
+  repo: https://github.com/Handsome/lottery
+  issues: https://github.com/Handsome/lottery/issues
+  displayName: "lottery"
+  description: "lottery - Halo 插件"
+  license:
+    - name: "GPL-3.0"
+      url: "https://github.com/Handsome/lottery/blob/main/LICENSE"
