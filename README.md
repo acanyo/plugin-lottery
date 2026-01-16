@@ -2,6 +2,12 @@
 
 给 Halo 站点加个抽奖功能，搞搞活动用。
 
+## 🌐 演示与交流
+
+- **演示站点1**：[https://www.xhhao.com/](https://www.xhhao.com/)
+- **文档**：[https://docs.lik.cc/](https://docs.lik.cc/)
+- **QQ 交流群**：[![QQ群](https://www.xhhao.com/upload/iShot_2025-03-03_16.03.00.png)](https://www.xhhao.com/upload/iShot_2025-03-03_16.03.00.png)
+
 ## 功能
 
 - **大转盘** - 转一转，立即出结果

@@ -5,6 +5,11 @@ plugins {
 
 group 'com.xhhao.lottery.ui'
 
+node {
+    download = true
+    version = '20.18.0'
+}
+
 tasks.register('pnpmBuild', PnpmTask) {
     group = 'build'
     description = 'Build the UI project using pnpm'

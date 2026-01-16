@@ -2,13 +2,17 @@ import {
   Node,
   VueNodeViewRenderer,
   mergeAttributes,
+  isActive,
   type Editor,
   type Range,
+  type EditorState,
 } from "@halo-dev/richtext-editor";
 import { markRaw } from "vue";
 import LotteryCardView from "./LotteryCardView.vue";
 import LotteryToolboxItem from "./LotteryToolboxItem.vue";
 import RiGiftLine from "~icons/ri/gift-line";
+import MdiDeleteForeverOutline from "~icons/mdi/delete-forever-outline";
+import { deleteNode } from "../utils/delete-node";
 
 declare module "@halo-dev/richtext-editor" {
   interface Commands<ReturnType> {
@@ -136,15 +140,31 @@ const LotteryCard = Node.create({
         return {
           priority: 200,
           icon: markRaw(RiGiftLine),
-          title: "editor.extensions.commands_menu.lottery",
+          title: "抽奖",
           keywords: ["lottery", "choujiang", "抽奖"],
           command: ({ editor, range }: { editor: Editor; range: Range }) => {
-            editor.chain().focus().deleteRange(range).run();
-            const event = new CustomEvent("lottery:open-select-modal", {
-              detail: { editor },
-            });
-            window.dispatchEvent(event);
+            editor.chain().focus().deleteRange(range).setLotteryCard({ name: "" }).run();
           },
+        };
+      },
+      getBubbleMenu({ editor }: { editor: Editor }) {
+        return {
+          pluginKey: "lottery-card-bubble-menu",
+          shouldShow: ({ state }: { state: EditorState }) => {
+            return isActive(state, "lottery-card");
+          },
+          items: [
+            {
+              priority: 10,
+              props: {
+                icon: markRaw(MdiDeleteForeverOutline),
+                title: "删除",
+                action: () => {
+                  deleteNode("lottery-card", editor);
+                },
+              },
+            },
+          ],
         };
       },
     };
