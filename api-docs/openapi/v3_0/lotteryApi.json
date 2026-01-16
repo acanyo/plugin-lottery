@@ -5,7 +5,7 @@
     "version" : "2.22.3"
   },
   "servers" : [ {
-    "url" : "http://localhost:48036",
+    "url" : "http://localhost:61809",
     "description" : "Generated server url"
   } ],
   "security" : [ {
@@ -13,6 +13,14 @@
     "bearerAuth" : [ ]
   } ],
   "paths" : {
+    "/apis/api.lottery.xhhao.com/v1alpha1/lotteries/verification-enabled" : {
+      "get" : {
+        "description" : "检查是否启用邮箱验证",
+        "operationId" : "CheckVerificationEnabled",
+        "responses" : { },
+        "tags" : [ "LotteryV1alpha1Public" ]
+      }
+    },
     "/apis/api.lottery.xhhao.com/v1alpha1/lotteries/{name}" : {
       "get" : {
         "description" : "获取活动详情",
@@ -21,6 +29,35 @@
           "in" : "path",
           "name" : "name",
           "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "tags" : [ "LotteryV1alpha1Public" ]
+      }
+    },
+    "/apis/api.lottery.xhhao.com/v1alpha1/lotteries/{name}/comment-check" : {
+      "get" : {
+        "description" : "检查当前用户是否已评论",
+        "operationId" : "CheckCommentStatus",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "postName",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "email",
           "schema" : {
             "type" : "string"
           }
@@ -54,6 +91,63 @@
         "tags" : [ "LotteryV1alpha1Public" ]
       }
     },
+    "/apis/api.lottery.xhhao.com/v1alpha1/lotteries/{name}/participate-comment" : {
+      "post" : {
+        "description" : "评论参与抽奖（支持登录用户和匿名评论）",
+        "operationId" : "ParticipateLotteryWithComment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "*/*" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ParticipateRequest"
+              }
+            }
+          }
+        },
+        "responses" : { },
+        "tags" : [ "LotteryV1alpha1Public" ]
+      }
+    },
+    "/apis/api.lottery.xhhao.com/v1alpha1/lotteries/{name}/participate-login" : {
+      "post" : {
+        "description" : "登录用户参与抽奖",
+        "operationId" : "ParticipateLotteryWithLogin",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "tags" : [ "LotteryV1alpha1Public" ]
+      }
+    },
+    "/apis/api.lottery.xhhao.com/v1alpha1/lotteries/{name}/participate-login-comment" : {
+      "post" : {
+        "description" : "登录+评论参与抽奖",
+        "operationId" : "ParticipateLotteryWithLoginAndComment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "tags" : [ "LotteryV1alpha1Public" ]
+      }
+    },
     "/apis/api.lottery.xhhao.com/v1alpha1/lotteries/{name}/recover" : {
       "post" : {
         "description" : "通过邮箱找回token",
@@ -71,6 +165,31 @@
             "*/*" : {
               "schema" : {
                 "$ref" : "#/components/schemas/RecoverRequest"
+              }
+            }
+          }
+        },
+        "responses" : { },
+        "tags" : [ "LotteryV1alpha1Public" ]
+      }
+    },
+    "/apis/api.lottery.xhhao.com/v1alpha1/lotteries/{name}/send-code" : {
+      "post" : {
+        "description" : "发送邮箱验证码",
+        "operationId" : "SendVerificationCode",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "*/*" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SendCodeRequest"
               }
             }
           }
@@ -197,6 +316,47 @@
           "description" : "参与类型: NONE, LOGIN, COMMENT, LOGIN_AND_COMMENT",
           "in" : "query",
           "name" : "participationType",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ListResult"
+                }
+              }
+            },
+            "description" : "default response"
+          }
+        },
+        "tags" : [ "LotteryV1alpha1Console" ]
+      }
+    },
+    "/apis/console.api.lottery.xhhao.com/v1alpha1/lotteries/{name}/participants" : {
+      "get" : {
+        "description" : "查询活动参与者列表",
+        "operationId" : "ListParticipants",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "页码",
+          "in" : "query",
+          "name" : "page",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "每页数量",
+          "in" : "query",
+          "name" : "size",
           "schema" : {
             "type" : "string"
           }
@@ -637,6 +797,74 @@
         },
         "tags" : [ "LotteryParticipantV1alpha1" ]
       }
+    },
+    "/apis/uc.api.lottery.xhhao.com/v1alpha1/participations" : {
+      "get" : {
+        "description" : "查询当前用户的参与记录",
+        "operationId" : "ListMyParticipations",
+        "parameters" : [ {
+          "description" : "页码",
+          "in" : "query",
+          "name" : "page",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "每页数量",
+          "in" : "query",
+          "name" : "size",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ListResult"
+                }
+              }
+            },
+            "description" : "default response"
+          }
+        },
+        "tags" : [ "LotteryV1alpha1Uc" ]
+      }
+    },
+    "/apis/uc.api.lottery.xhhao.com/v1alpha1/winnings" : {
+      "get" : {
+        "description" : "查询当前用户的中奖记录",
+        "operationId" : "ListMyWinnings",
+        "parameters" : [ {
+          "description" : "页码",
+          "in" : "query",
+          "name" : "page",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "每页数量",
+          "in" : "query",
+          "name" : "size",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ListResult"
+                }
+              }
+            },
+            "description" : "default response"
+          }
+        },
+        "tags" : [ "LotteryV1alpha1Uc" ]
+      }
     }
   },
   "components" : {
@@ -985,6 +1213,9 @@
           "activityName" : {
             "type" : "string"
           },
+          "activityTitle" : {
+            "type" : "string"
+          },
           "commentName" : {
             "type" : "string"
           },
@@ -1105,6 +1336,12 @@
           },
           "email" : {
             "type" : "string"
+          },
+          "postName" : {
+            "type" : "string"
+          },
+          "verificationCode" : {
+            "type" : "string"
           }
         }
       },
@@ -1174,6 +1411,14 @@
           },
           "value" : {
             "description" : "Value can be any JSON value"
+          }
+        }
+      },
+      "SendCodeRequest" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string"
           }
         }
       },

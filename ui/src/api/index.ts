@@ -6,6 +6,7 @@ import {
   // Custom Endpoint APIs
   LotteryV1alpha1PublicApi,
   LotteryV1alpha1ConsoleApi,
+  LotteryV1alpha1UcApi,
 } from "./generated";
 
 // Extension CRUD API clients
@@ -15,6 +16,7 @@ const lotteryParticipantApi = new LotteryParticipantV1alpha1Api(undefined, "", a
 // Custom Endpoint API clients
 const lotteryPublicApi = new LotteryV1alpha1PublicApi(undefined, "", axiosInstance);
 const lotteryConsoleApi = new LotteryV1alpha1ConsoleApi(undefined, "", axiosInstance);
+const lotteryUcApi = new LotteryV1alpha1UcApi(undefined, "", axiosInstance);
 
 export {
   // Extension CRUD
@@ -23,6 +25,7 @@ export {
   // Custom Endpoints
   lotteryPublicApi,
   lotteryConsoleApi,
+  lotteryUcApi,
 };
 
 // Re-export types

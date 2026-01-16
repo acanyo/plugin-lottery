@@ -18,8 +18,10 @@
     "tabWidth": 2
   },
   "dependencies": {
+    "@xhhao-com/lottery-card": "workspace:*",
     "@halo-dev/api-client": "^2.22.0",
     "@halo-dev/components": "^2.22.0",
+    "@halo-dev/richtext-editor": "^2.22.0",
     "@halo-dev/ui-shared": "^2.22.0",
     "@formkit/core": "^1.4.0",
     "@tanstack/vue-query": "^5.62.16",

@@ -6,6 +6,7 @@ api/lottery-activity-v1alpha1-api.ts
 api/lottery-participant-v1alpha1-api.ts
 api/lottery-v1alpha1-console-api.ts
 api/lottery-v1alpha1-public-api.ts
+api/lottery-v1alpha1-uc-api.ts
 base.ts
 common.ts
 configuration.ts
@@ -31,5 +32,6 @@ models/prize.ts
 models/recover-request.ts
 models/remove-operation.ts
 models/replace-operation.ts
+models/send-code-request.ts
 models/test-operation.ts
 models/winner.ts

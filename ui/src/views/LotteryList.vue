@@ -20,11 +20,15 @@ import { lotteryActivityApi, lotteryConsoleApi } from "@/api";
 import LotteryListItem from "@/components/LotteryListItem.vue";
 import type { LotteryActivity } from "@/api/generated";
 import LotteryEditingModal from "@/components/LotteryEditingModal.vue";
+import WinnersModal from "@/components/WinnersModal.vue";
+import ParticipantsModal from "@/components/ParticipantsModal.vue";
 import RiGiftLine from "~icons/ri/gift-line";
 
 const queryClient = useQueryClient();
 
 const editingModal = ref(false);
+const winnersModal = ref(false);
+const participantsModal = ref(false);
 const checkAll = ref(false);
 const selectedLottery = ref<LotteryActivity>();
 const selectedLotteryNames = ref<string[]>([]);
@@ -175,6 +179,26 @@ const onEditingModalClose = () => {
   editingModal.value = false;
   refetch();
 };
+
+const handleShowWinners = (lottery: LotteryActivity) => {
+  selectedLottery.value = lottery;
+  winnersModal.value = true;
+};
+
+const onWinnersModalClose = () => {
+  selectedLottery.value = undefined;
+  winnersModal.value = false;
+};
+
+const handleShowParticipants = (lottery: LotteryActivity) => {
+  selectedLottery.value = lottery;
+  participantsModal.value = true;
+};
+
+const onParticipantsModalClose = () => {
+  selectedLottery.value = undefined;
+  participantsModal.value = false;
+};
 </script>
 
 <template>
@@ -182,6 +206,16 @@ const onEditingModalClose = () => {
     v-if="editingModal"
     :lottery="selectedLottery"
     @close="onEditingModalClose"
+  />
+  <WinnersModal
+    v-model:visible="winnersModal"
+    :lottery="selectedLottery"
+    @close="onWinnersModalClose"
+  />
+  <ParticipantsModal
+    v-model:visible="participantsModal"
+    :lottery="selectedLottery"
+    @close="onParticipantsModalClose"
   />
   <VPageHeader title="抽奖管理">
     <template #icon>
@@ -303,6 +337,8 @@ const onEditingModalClose = () => {
             :is-selected="checkSelection(lottery)"
             @editing="handleOpenEditingModal"
             @delete="handleDelete"
+            @winners="handleShowWinners"
+            @participants="handleShowParticipants"
           >
             <template #checkbox>
               <input

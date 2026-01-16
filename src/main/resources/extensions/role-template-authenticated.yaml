@@ -1,0 +1,15 @@
+apiVersion: v1alpha1
+kind: Role
+metadata:
+  name: role-template-authenticated-lottery
+  labels:
+    halo.run/hidden: "true"
+    halo.run/role-template: "true"
+    rbac.authorization.halo.run/aggregate-to-authenticated: "true"
+  annotations:
+    rbac.authorization.halo.run/module: "抽奖管理"
+    rbac.authorization.halo.run/display-name: "用户中心访问"
+rules:
+  - apiGroups: ["uc.api.lottery.xhhao.com"]
+    resources: ["*"]
+    verbs: ["*"]

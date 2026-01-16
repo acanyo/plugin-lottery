@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { LotteryData, StatusResult, ParticipateResult } from "../types";
+  import type { LotteryData, StatusResult, ParticipateResult, ParticipationType, SendCodeResult } from "../types";
   import confetti from "canvas-confetti";
   import qiantongSvg from "../assets/qiantong.svg";
 
@@ -7,23 +7,48 @@
     lotteryData,
     statusResult,
     onParticipate,
+    verificationEnabled = false,
+    onSendCode,
+    commentEmail = "",
   }: {
     lotteryData: LotteryData;
     statusResult?: StatusResult;
     participating?: boolean;
-    onParticipate?: (email: string, displayName?: string) => Promise<ParticipateResult | undefined>;
+    onParticipate?: (email: string, displayName?: string, verificationCode?: string) => Promise<ParticipateResult | undefined>;
+    verificationEnabled?: boolean;
+    onSendCode?: (email: string) => Promise<SendCodeResult>;
+    commentEmail?: string;
   } = $props();
 
   let email = $state("");
+  let verificationCode = $state("");
   let showEmailInput = $state(false);
   let drawing = $state(false);
+  let sendingCode = $state(false);
+  let countdown = $state(0);
   let result = $state<ParticipateResult | undefined>();
   let showResult = $state(false);
+  let errorMsg = $state("");
+
+  // 参与类型提示文案
+  const participationHint: Record<ParticipationType, string> = {
+    NONE: "输入邮箱参与抽签",
+    LOGIN: "🔐 需要登录后参与",
+    COMMENT: "💬 需要在本文评论，刷新页面后参与",
+    LOGIN_AND_COMMENT: "🔐💬 需要登录并评论后参与",
+  };
+
+  // 是否需要邮箱输入（只有 NONE 类型需要）
+  let needsEmail = $derived(lotteryData?.participationType === "NONE");
+  // COMMENT 类型
+  let isCommentType = $derived(lotteryData?.participationType === "COMMENT");
+  // 是否需要验证码（NONE 和 COMMENT 类型需要，登录类型不需要）
+  let needsVerification = $derived(verificationEnabled && (needsEmail || isCommentType));
+  // 是否需要显示输入表单
+  let needsForm = $derived(needsEmail || (isCommentType && needsVerification));
 
   let canParticipate = $derived(
-    lotteryData?.state === "RUNNING" &&
-    !statusResult?.participated &&
-    (!lotteryData?.participationType || lotteryData?.participationType === "NONE")
+    lotteryData?.state === "RUNNING" && !statusResult?.participated
   );
 
   function fireConfetti() {
@@ -32,13 +57,33 @@
   }
 
   async function handleDraw() {
-    if (!email || drawing || !onParticipate) return;
+    if (drawing || !onParticipate) return;
+    // NONE 类型必须填写邮箱，COMMENT 类型使用评论邮箱
+    const targetEmail = isCommentType ? commentEmail : email;
+    if (needsEmail && !email) return;
+    // 需要验证码时必须填写
+    if (needsVerification && !verificationCode) {
+      errorMsg = "请输入验证码";
+      return;
+    }
+    
     drawing = true;
     result = undefined;
     showResult = false;
+    errorMsg = "";
 
-    const apiResult = await onParticipate(email, undefined);
+    const apiResult = await onParticipate(targetEmail, undefined, needsVerification ? verificationCode : undefined);
     result = apiResult;
+
+    if (!apiResult?.success) {
+      drawing = false;
+      showResult = true;
+      errorMsg = apiResult?.message || "";
+      return;
+    }
+    // 参与成功后清除验证码和倒计时
+    verificationCode = "";
+    countdown = 0;
 
     setTimeout(() => {
       drawing = false;
@@ -47,18 +92,58 @@
     }, 1500);
   }
 
+  async function handleSendCode() {
+    const targetEmail = isCommentType ? commentEmail : email;
+    if (!targetEmail || sendingCode || !onSendCode) return;
+    
+    sendingCode = true;
+    errorMsg = "";
+    const codeResult = await onSendCode(targetEmail);
+    sendingCode = false;
+    
+    if (codeResult.success) {
+      countdown = 60;
+      const timer = setInterval(() => {
+        countdown--;
+        if (countdown <= 0) {
+          clearInterval(timer);
+        }
+      }, 1000);
+    } else {
+      errorMsg = codeResult.message;
+    }
+  }
+
   function handleEmailSubmit(e: Event) {
     e.preventDefault();
-    if (email) {
-      showEmailInput = false;
-      handleDraw();
+    // NONE 类型需要邮箱，COMMENT 类型需要验证码
+    if (needsEmail && !email) {
+      errorMsg = "请输入邮箱";
+      return;
     }
+    if (needsVerification && !verificationCode) {
+      errorMsg = "请输入验证码";
+      return;
+    }
+    showEmailInput = false;
+    handleDraw();
   }
 
   function handleClick() {
     if (canParticipate && !drawing && !showResult) {
-      if (email) handleDraw();
-      else showEmailInput = true;
+      if (needsForm) {
+        // 需要表单：NONE 类型需要邮箱，COMMENT 类型需要验证码
+        if (needsEmail && email && (!needsVerification || verificationCode)) {
+          handleDraw();
+        } else if (isCommentType && commentEmail && (!needsVerification || verificationCode)) {
+          handleDraw();
+        } else {
+          showEmailInput = true;
+        }
+      } else {
+        // 不需要表单（登录类型）：直接抽签
+        handleDraw();
+      }
     }
   }
 </script>
@@ -79,7 +164,7 @@
       role="button" 
       tabindex="0"
     >
-      <img src={qiantongSvg} alt="签筒" class="draw__bucket-img" />
+      <img src={qiantongSvg} alt="签筒" class="draw__bucket-img" style="background: transparent" />
     </div>
     
     {#if canParticipate && !drawing && !showResult && !showEmailInput}
@@ -87,11 +172,33 @@
     {/if}
   </div>
 
-  {#if showEmailInput && canParticipate}
-    <form onsubmit={handleEmailSubmit} class="draw__form">
-      <input type="email" bind:value={email} placeholder="输入邮箱参与抽签" required />
-      <button type="submit" disabled={!email}>开始抽签</button>
-    </form>
+  {#if showEmailInput && canParticipate && needsForm}
+    {#if isCommentType && !commentEmail}
+      <div class="draw__login-hint draw__login-hint--warning">请先在本文评论，刷新页面后参与</div>
+    {:else}
+      <form onsubmit={handleEmailSubmit} class="draw__form">
+        <div class="draw__form-inputs">
+          {#if needsEmail}
+            <input type="email" bind:value={email} placeholder="输入邮箱参与抽签" required />
+          {/if}
+          {#if needsVerification}
+            <div class="draw__code-row">
+              <input type="text" bind:value={verificationCode} placeholder="验证码" required maxlength="6" class="draw__code-input" />
+              <button type="button" onclick={handleSendCode} disabled={(needsEmail && !email) || (isCommentType && !commentEmail) || sendingCode || countdown > 0} class="draw__code-btn">
+                {#if sendingCode}发送中{:else if countdown > 0}{countdown}s{:else}获取验证码{/if}
+              </button>
+            </div>
+          {/if}
+          {#if errorMsg}
+            <div class="draw__error">{errorMsg}</div>
+          {/if}
+        </div>
+        <button type="submit" disabled={(needsEmail && !email) || (needsVerification && !verificationCode)}>开始抽签</button>
+      </form>
+    {/if}
+  {:else if canParticipate && !showResult && !drawing && !needsForm}
+    <!-- 参与类型提示 -->
+    <div class="draw__login-hint">{participationHint[lotteryData?.participationType || "NONE"]}</div>
   {/if}
 
   {#if showResult && result}
@@ -218,14 +325,22 @@
 
   .draw__form {
     display: flex;
+    flex-direction: column;
     gap: 10px;
-    justify-content: center;
+    align-items: center;
     margin-top: 16px;
   }
 
+  .draw__form-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 280px;
+  }
+
   .draw__form input {
-    flex: 1;
-    max-width: 180px;
+    width: 100%;
     padding: 12px 16px;
     border: 2px solid #f0d4a8;
     border-radius: 24px;
@@ -239,7 +354,42 @@
     border-color: #c41e3a;
   }
 
-  .draw__form button {
+  .draw__code-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .draw__code-input {
+    flex: 1;
+    letter-spacing: 4px;
+    text-align: center;
+  }
+
+  .draw__code-btn {
+    flex-shrink: 0;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #c41e3a;
+    background: transparent;
+    border: 2px solid #f0d4a8;
+    border-radius: 24px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .draw__code-btn:disabled {
+    color: #a1a1aa;
+    border-color: #e4e4e7;
+    cursor: not-allowed;
+  }
+
+  .draw__error {
+    color: #dc2626;
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .draw__form > button {
     padding: 12px 24px;
     background: linear-gradient(180deg, #c41e3a 0%, #a01830 100%);
     color: #fff;
@@ -320,6 +470,13 @@
     text-align: center;
     margin-top: 16px;
     color: #999;
+    font-size: 14px;
+  }
+
+  .draw__login-hint {
+    text-align: center;
+    margin-top: 16px;
+    color: #d4763a;
     font-size: 14px;
   }
 

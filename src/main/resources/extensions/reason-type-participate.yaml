@@ -1,0 +1,23 @@
+apiVersion: notification.halo.run/v1alpha1
+kind: ReasonType
+metadata:
+  name: lottery-participate
+spec:
+  displayName: "抽奖参与成功"
+  description: "用户成功参与抽奖活动时发送通知"
+  properties:
+    - name: activityTitle
+      type: string
+      description: "活动标题"
+    - name: activityName
+      type: string
+      description: "活动名称"
+    - name: participantEmail
+      type: string
+      description: "参与者邮箱"
+    - name: participantName
+      type: string
+      description: "参与者名称"
+    - name: participateTime
+      type: string
+      description: "参与时间"

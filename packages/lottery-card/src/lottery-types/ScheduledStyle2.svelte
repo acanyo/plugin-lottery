@@ -47,9 +47,9 @@
 
 <div class="lottery-s2 lottery-shine">
   <!-- 装饰元素 -->
-  <img src={hongbaoSvg} alt="" class="lottery-s2__decor lottery-s2__decor--1" />
-  <img src={jinbiSvg} alt="" class="lottery-s2__decor lottery-s2__decor--2" />
-  <img src={starsSvg} alt="" class="lottery-s2__decor lottery-s2__decor--3" />
+  <img src={hongbaoSvg} alt="" class="lottery-s2__decor lottery-s2__decor--1" style="background: transparent" />
+  <img src={jinbiSvg} alt="" class="lottery-s2__decor lottery-s2__decor--2" style="background: transparent" />
+  <img src={starsSvg} alt="" class="lottery-s2__decor lottery-s2__decor--3" style="background: transparent" />
 
   <!-- 标题 -->
   <div class="lottery-s2__header">
@@ -74,7 +74,7 @@
         {@const p = prize as Prize}
         <div class="lottery-s2__prize">
           {#if p.imageUrl}
-            <img src={p.imageUrl} alt={p.name} class="lottery-s2__prize-img" />
+            <img src={p.imageUrl} alt={p.name} class="lottery-s2__prize-img" style="background: transparent" />
           {:else}
             <span class="lottery-s2__prize-emoji">🎁</span>
           {/if}

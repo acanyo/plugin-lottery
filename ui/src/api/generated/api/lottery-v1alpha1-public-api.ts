@@ -25,12 +25,104 @@ import { BASE_PATH, COLLECTION_FORMATS, type RequestArgs, BaseAPI, RequiredError
 import type { ParticipateRequest } from '../models';
 // @ts-ignore
 import type { RecoverRequest } from '../models';
+// @ts-ignore
+import type { SendCodeRequest } from '../models';
 /**
  * LotteryV1alpha1PublicApi - axios parameter creator
  * @export
  */
 export const LotteryV1alpha1PublicApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
+        /**
+         * 检查当前用户是否已评论
+         * @param {string} name 
+         * @param {string} postName 
+         * @param {string} [email] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        checkCommentStatus: async (name: string, postName: string, email?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'name' is not null or undefined
+            assertParamExists('checkCommentStatus', 'name', name)
+            // verify required parameter 'postName' is not null or undefined
+            assertParamExists('checkCommentStatus', 'postName', postName)
+            const localVarPath = `/apis/api.lottery.xhhao.com/v1alpha1/lotteries/{name}/comment-check`
+                .replace(`{${"name"}}`, encodeURIComponent(String(name)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication basicAuth required
+            // http basic authentication required
+            setBasicAuthToObject(localVarRequestOptions, configuration)
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (postName !== undefined) {
+                localVarQueryParameter['postName'] = postName;
+            }
+
+            if (email !== undefined) {
+                localVarQueryParameter['email'] = email;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 检查是否启用邮箱验证
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        checkVerificationEnabled: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/apis/api.lottery.xhhao.com/v1alpha1/lotteries/verification-enabled`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication basicAuth required
+            // http basic authentication required
+            setBasicAuthToObject(localVarRequestOptions, configuration)
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
         /**
          * 获取活动详情
          * @param {string} name 
@@ -164,6 +256,133 @@ export const LotteryV1alpha1PublicApiAxiosParamCreator = function (configuration
             };
         },
         /**
+         * 评论参与抽奖（支持登录用户和匿名评论）
+         * @param {string} name 
+         * @param {ParticipateRequest} [participateRequest] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        participateLotteryWithComment: async (name: string, participateRequest?: ParticipateRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'name' is not null or undefined
+            assertParamExists('participateLotteryWithComment', 'name', name)
+            const localVarPath = `/apis/api.lottery.xhhao.com/v1alpha1/lotteries/{name}/participate-comment`
+                .replace(`{${"name"}}`, encodeURIComponent(String(name)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication basicAuth required
+            // http basic authentication required
+            setBasicAuthToObject(localVarRequestOptions, configuration)
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(participateRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 登录用户参与抽奖
+         * @param {string} name 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        participateLotteryWithLogin: async (name: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'name' is not null or undefined
+            assertParamExists('participateLotteryWithLogin', 'name', name)
+            const localVarPath = `/apis/api.lottery.xhhao.com/v1alpha1/lotteries/{name}/participate-login`
+                .replace(`{${"name"}}`, encodeURIComponent(String(name)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication basicAuth required
+            // http basic authentication required
+            setBasicAuthToObject(localVarRequestOptions, configuration)
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 登录+评论参与抽奖
+         * @param {string} name 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        participateLotteryWithLoginAndComment: async (name: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'name' is not null or undefined
+            assertParamExists('participateLotteryWithLoginAndComment', 'name', name)
+            const localVarPath = `/apis/api.lottery.xhhao.com/v1alpha1/lotteries/{name}/participate-login-comment`
+                .replace(`{${"name"}}`, encodeURIComponent(String(name)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication basicAuth required
+            // http basic authentication required
+            setBasicAuthToObject(localVarRequestOptions, configuration)
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * 通过邮箱找回token
          * @param {string} name 
          * @param {RecoverRequest} [recoverRequest] 
@@ -208,6 +427,51 @@ export const LotteryV1alpha1PublicApiAxiosParamCreator = function (configuration
                 options: localVarRequestOptions,
             };
         },
+        /**
+         * 发送邮箱验证码
+         * @param {string} name 
+         * @param {SendCodeRequest} [sendCodeRequest] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        sendVerificationCode: async (name: string, sendCodeRequest?: SendCodeRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'name' is not null or undefined
+            assertParamExists('sendVerificationCode', 'name', name)
+            const localVarPath = `/apis/api.lottery.xhhao.com/v1alpha1/lotteries/{name}/send-code`
+                .replace(`{${"name"}}`, encodeURIComponent(String(name)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication basicAuth required
+            // http basic authentication required
+            setBasicAuthToObject(localVarRequestOptions, configuration)
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(sendCodeRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
     }
 };
 
@@ -218,6 +482,31 @@ export const LotteryV1alpha1PublicApiAxiosParamCreator = function (configuration
 export const LotteryV1alpha1PublicApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = LotteryV1alpha1PublicApiAxiosParamCreator(configuration)
     return {
+        /**
+         * 检查当前用户是否已评论
+         * @param {string} name 
+         * @param {string} postName 
+         * @param {string} [email] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async checkCommentStatus(name: string, postName: string, email?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.checkCommentStatus(name, postName, email, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['LotteryV1alpha1PublicApi.checkCommentStatus']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 检查是否启用邮箱验证
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async checkVerificationEnabled(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.checkVerificationEnabled(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['LotteryV1alpha1PublicApi.checkVerificationEnabled']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
         /**
          * 获取活动详情
          * @param {string} name 
@@ -257,6 +546,43 @@ export const LotteryV1alpha1PublicApiFp = function(configuration?: Configuration
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * 评论参与抽奖（支持登录用户和匿名评论）
+         * @param {string} name 
+         * @param {ParticipateRequest} [participateRequest] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async participateLotteryWithComment(name: string, participateRequest?: ParticipateRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.participateLotteryWithComment(name, participateRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['LotteryV1alpha1PublicApi.participateLotteryWithComment']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 登录用户参与抽奖
+         * @param {string} name 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async participateLotteryWithLogin(name: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.participateLotteryWithLogin(name, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['LotteryV1alpha1PublicApi.participateLotteryWithLogin']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 登录+评论参与抽奖
+         * @param {string} name 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async participateLotteryWithLoginAndComment(name: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.participateLotteryWithLoginAndComment(name, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['LotteryV1alpha1PublicApi.participateLotteryWithLoginAndComment']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * 通过邮箱找回token
          * @param {string} name 
          * @param {RecoverRequest} [recoverRequest] 
@@ -269,6 +595,19 @@ export const LotteryV1alpha1PublicApiFp = function(configuration?: Configuration
             const localVarOperationServerBasePath = operationServerMap['LotteryV1alpha1PublicApi.recoverLotteryToken']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
+        /**
+         * 发送邮箱验证码
+         * @param {string} name 
+         * @param {SendCodeRequest} [sendCodeRequest] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async sendVerificationCode(name: string, sendCodeRequest?: SendCodeRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.sendVerificationCode(name, sendCodeRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['LotteryV1alpha1PublicApi.sendVerificationCode']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
     }
 };
 
@@ -279,6 +618,23 @@ export const LotteryV1alpha1PublicApiFp = function(configuration?: Configuration
 export const LotteryV1alpha1PublicApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
     const localVarFp = LotteryV1alpha1PublicApiFp(configuration)
     return {
+        /**
+         * 检查当前用户是否已评论
+         * @param {LotteryV1alpha1PublicApiCheckCommentStatusRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        checkCommentStatus(requestParameters: LotteryV1alpha1PublicApiCheckCommentStatusRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.checkCommentStatus(requestParameters.name, requestParameters.postName, requestParameters.email, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 检查是否启用邮箱验证
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        checkVerificationEnabled(options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.checkVerificationEnabled(options).then((request) => request(axios, basePath));
+        },
         /**
          * 获取活动详情
          * @param {LotteryV1alpha1PublicApiGetLotteryActivityRequest} requestParameters Request parameters.
@@ -307,6 +663,33 @@ export const LotteryV1alpha1PublicApiFactory = function (configuration?: Configu
             return localVarFp.participateLottery(requestParameters.name, requestParameters.participateRequest, options).then((request) => request(axios, basePath));
         },
         /**
+         * 评论参与抽奖（支持登录用户和匿名评论）
+         * @param {LotteryV1alpha1PublicApiParticipateLotteryWithCommentRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        participateLotteryWithComment(requestParameters: LotteryV1alpha1PublicApiParticipateLotteryWithCommentRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.participateLotteryWithComment(requestParameters.name, requestParameters.participateRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 登录用户参与抽奖
+         * @param {LotteryV1alpha1PublicApiParticipateLotteryWithLoginRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        participateLotteryWithLogin(requestParameters: LotteryV1alpha1PublicApiParticipateLotteryWithLoginRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.participateLotteryWithLogin(requestParameters.name, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 登录+评论参与抽奖
+         * @param {LotteryV1alpha1PublicApiParticipateLotteryWithLoginAndCommentRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        participateLotteryWithLoginAndComment(requestParameters: LotteryV1alpha1PublicApiParticipateLotteryWithLoginAndCommentRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.participateLotteryWithLoginAndComment(requestParameters.name, options).then((request) => request(axios, basePath));
+        },
+        /**
          * 通过邮箱找回token
          * @param {LotteryV1alpha1PublicApiRecoverLotteryTokenRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -315,8 +698,45 @@ export const LotteryV1alpha1PublicApiFactory = function (configuration?: Configu
         recoverLotteryToken(requestParameters: LotteryV1alpha1PublicApiRecoverLotteryTokenRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
             return localVarFp.recoverLotteryToken(requestParameters.name, requestParameters.recoverRequest, options).then((request) => request(axios, basePath));
         },
+        /**
+         * 发送邮箱验证码
+         * @param {LotteryV1alpha1PublicApiSendVerificationCodeRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        sendVerificationCode(requestParameters: LotteryV1alpha1PublicApiSendVerificationCodeRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.sendVerificationCode(requestParameters.name, requestParameters.sendCodeRequest, options).then((request) => request(axios, basePath));
+        },
     };
 };
+
+/**
+ * Request parameters for checkCommentStatus operation in LotteryV1alpha1PublicApi.
+ * @export
+ * @interface LotteryV1alpha1PublicApiCheckCommentStatusRequest
+ */
+export interface LotteryV1alpha1PublicApiCheckCommentStatusRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof LotteryV1alpha1PublicApiCheckCommentStatus
+     */
+    readonly name: string
+
+    /**
+     * 
+     * @type {string}
+     * @memberof LotteryV1alpha1PublicApiCheckCommentStatus
+     */
+    readonly postName: string
+
+    /**
+     * 
+     * @type {string}
+     * @memberof LotteryV1alpha1PublicApiCheckCommentStatus
+     */
+    readonly email?: string
+}
 
 /**
  * Request parameters for getLotteryActivity operation in LotteryV1alpha1PublicApi.
@@ -375,6 +795,55 @@ export interface LotteryV1alpha1PublicApiParticipateLotteryRequest {
 }
 
 /**
+ * Request parameters for participateLotteryWithComment operation in LotteryV1alpha1PublicApi.
+ * @export
+ * @interface LotteryV1alpha1PublicApiParticipateLotteryWithCommentRequest
+ */
+export interface LotteryV1alpha1PublicApiParticipateLotteryWithCommentRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof LotteryV1alpha1PublicApiParticipateLotteryWithComment
+     */
+    readonly name: string
+
+    /**
+     * 
+     * @type {ParticipateRequest}
+     * @memberof LotteryV1alpha1PublicApiParticipateLotteryWithComment
+     */
+    readonly participateRequest?: ParticipateRequest
+}
+
+/**
+ * Request parameters for participateLotteryWithLogin operation in LotteryV1alpha1PublicApi.
+ * @export
+ * @interface LotteryV1alpha1PublicApiParticipateLotteryWithLoginRequest
+ */
+export interface LotteryV1alpha1PublicApiParticipateLotteryWithLoginRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof LotteryV1alpha1PublicApiParticipateLotteryWithLogin
+     */
+    readonly name: string
+}
+
+/**
+ * Request parameters for participateLotteryWithLoginAndComment operation in LotteryV1alpha1PublicApi.
+ * @export
+ * @interface LotteryV1alpha1PublicApiParticipateLotteryWithLoginAndCommentRequest
+ */
+export interface LotteryV1alpha1PublicApiParticipateLotteryWithLoginAndCommentRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof LotteryV1alpha1PublicApiParticipateLotteryWithLoginAndComment
+     */
+    readonly name: string
+}
+
+/**
  * Request parameters for recoverLotteryToken operation in LotteryV1alpha1PublicApi.
  * @export
  * @interface LotteryV1alpha1PublicApiRecoverLotteryTokenRequest
@@ -396,12 +865,54 @@ export interface LotteryV1alpha1PublicApiRecoverLotteryTokenRequest {
 }
 
 /**
+ * Request parameters for sendVerificationCode operation in LotteryV1alpha1PublicApi.
+ * @export
+ * @interface LotteryV1alpha1PublicApiSendVerificationCodeRequest
+ */
+export interface LotteryV1alpha1PublicApiSendVerificationCodeRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof LotteryV1alpha1PublicApiSendVerificationCode
+     */
+    readonly name: string
+
+    /**
+     * 
+     * @type {SendCodeRequest}
+     * @memberof LotteryV1alpha1PublicApiSendVerificationCode
+     */
+    readonly sendCodeRequest?: SendCodeRequest
+}
+
+/**
  * LotteryV1alpha1PublicApi - object-oriented interface
  * @export
  * @class LotteryV1alpha1PublicApi
  * @extends {BaseAPI}
  */
 export class LotteryV1alpha1PublicApi extends BaseAPI {
+    /**
+     * 检查当前用户是否已评论
+     * @param {LotteryV1alpha1PublicApiCheckCommentStatusRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof LotteryV1alpha1PublicApi
+     */
+    public checkCommentStatus(requestParameters: LotteryV1alpha1PublicApiCheckCommentStatusRequest, options?: RawAxiosRequestConfig) {
+        return LotteryV1alpha1PublicApiFp(this.configuration).checkCommentStatus(requestParameters.name, requestParameters.postName, requestParameters.email, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 检查是否启用邮箱验证
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof LotteryV1alpha1PublicApi
+     */
+    public checkVerificationEnabled(options?: RawAxiosRequestConfig) {
+        return LotteryV1alpha1PublicApiFp(this.configuration).checkVerificationEnabled(options).then((request) => request(this.axios, this.basePath));
+    }
+
     /**
      * 获取活动详情
      * @param {LotteryV1alpha1PublicApiGetLotteryActivityRequest} requestParameters Request parameters.
@@ -436,6 +947,39 @@ export class LotteryV1alpha1PublicApi extends BaseAPI {
     }
 
     /**
+     * 评论参与抽奖（支持登录用户和匿名评论）
+     * @param {LotteryV1alpha1PublicApiParticipateLotteryWithCommentRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof LotteryV1alpha1PublicApi
+     */
+    public participateLotteryWithComment(requestParameters: LotteryV1alpha1PublicApiParticipateLotteryWithCommentRequest, options?: RawAxiosRequestConfig) {
+        return LotteryV1alpha1PublicApiFp(this.configuration).participateLotteryWithComment(requestParameters.name, requestParameters.participateRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 登录用户参与抽奖
+     * @param {LotteryV1alpha1PublicApiParticipateLotteryWithLoginRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof LotteryV1alpha1PublicApi
+     */
+    public participateLotteryWithLogin(requestParameters: LotteryV1alpha1PublicApiParticipateLotteryWithLoginRequest, options?: RawAxiosRequestConfig) {
+        return LotteryV1alpha1PublicApiFp(this.configuration).participateLotteryWithLogin(requestParameters.name, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 登录+评论参与抽奖
+     * @param {LotteryV1alpha1PublicApiParticipateLotteryWithLoginAndCommentRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof LotteryV1alpha1PublicApi
+     */
+    public participateLotteryWithLoginAndComment(requestParameters: LotteryV1alpha1PublicApiParticipateLotteryWithLoginAndCommentRequest, options?: RawAxiosRequestConfig) {
+        return LotteryV1alpha1PublicApiFp(this.configuration).participateLotteryWithLoginAndComment(requestParameters.name, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * 通过邮箱找回token
      * @param {LotteryV1alpha1PublicApiRecoverLotteryTokenRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
@@ -444,6 +988,17 @@ export class LotteryV1alpha1PublicApi extends BaseAPI {
      */
     public recoverLotteryToken(requestParameters: LotteryV1alpha1PublicApiRecoverLotteryTokenRequest, options?: RawAxiosRequestConfig) {
         return LotteryV1alpha1PublicApiFp(this.configuration).recoverLotteryToken(requestParameters.name, requestParameters.recoverRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 发送邮箱验证码
+     * @param {LotteryV1alpha1PublicApiSendVerificationCodeRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof LotteryV1alpha1PublicApi
+     */
+    public sendVerificationCode(requestParameters: LotteryV1alpha1PublicApiSendVerificationCodeRequest, options?: RawAxiosRequestConfig) {
+        return LotteryV1alpha1PublicApiFp(this.configuration).sendVerificationCode(requestParameters.name, requestParameters.sendCodeRequest, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

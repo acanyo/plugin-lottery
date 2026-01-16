@@ -10,13 +10,15 @@ spec:
   requires: ">=2.22.0"
   author:
     name: Handsome
-    website: https://github.com/Handsome
-  logo: logo.png
-  homepage: https://github.com/Handsome/lottery#readme
-  repo: https://github.com/Handsome/lottery
-  issues: https://github.com/Handsome/lottery/issues
-  displayName: "lottery"
-  description: "lottery - Halo 插件"
+    website: https://www.xhhao.com
+  logo: logo.svg
+  settingName: "plugin-lottery-settings"
+  configMapName: "plugin-lottery-configmap"
+  homepage: ttps://www.xhhao.com
+  repo: https://github.com/Handsome/plugin-lottery
+  issues: https://github.com/Handsome/plugin-lottery/issues
+  displayName: "抽奖插件"
+  description: "为你的网站添加抽奖功能，支持大转盘、抽签、定时开奖等多种玩法"
   license:
     - name: "GPL-3.0"
       url: "https://github.com/Handsome/lottery/blob/main/LICENSE"

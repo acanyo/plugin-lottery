@@ -42,6 +42,8 @@ export interface ParticipateResult {
   // 即时开奖结果
   isWinner?: boolean;
   prizeName?: string;
+  // 是否需要验证码
+  needVerification?: boolean;
 }
 
 export interface StatusResult {
@@ -49,4 +51,13 @@ export interface StatusResult {
   token?: string;
   isWinner?: boolean;
   prizeName?: string;
+}
+
+export interface SendCodeResult {
+  success: boolean;
+  message: string;
+}
+
+export interface VerificationEnabledResult {
+  enabled: boolean;
 }

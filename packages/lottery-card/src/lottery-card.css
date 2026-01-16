@@ -31,6 +31,30 @@
   padding: 0;
 }
 
+/* 覆盖外部样式对 img 的白色背景设置 */
+.lottery-card img,
+.lottery-card-wrapper img,
+.draw img,
+.lottery-wheel img,
+.lottery-s2 img,
+lottery-card img {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* 更强的选择器覆盖 markdown-body 等外部样式 */
+.markdown-body .lottery-card img,
+.markdown-body lottery-card img,
+.prose .lottery-card img,
+.prose lottery-card img,
+.content .lottery-card img,
+.content lottery-card img,
+article .lottery-card img,
+article lottery-card img {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
 /* ==================== 头部彩色区域 ==================== */
 .lottery-header {
   position: relative;
@@ -439,36 +463,82 @@
 /* ==================== 表单 ==================== */
 .lottery-form {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+}
+.lottery-form__inputs {
+  display: flex;
   gap: 8px;
 }
 .lottery-input {
   flex: 1;
   min-width: 0;
-  height: 36px;
-  padding: 0 12px;
+  height: 40px;
+  padding: 0 14px;
   font-size: 14px;
   color: var(--lottery-text);
   background: transparent;
   border: 1px solid #e4e4e7;
-  border-radius: 6px;
+  border-radius: 8px;
   outline: none;
   transition: all 0.15s;
 }
 .lottery-input:focus {
-  border-color: #a1a1aa;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+  border-color: var(--lottery-primary);
+  box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.1);
 }
 .lottery-input::placeholder {
   color: #a1a1aa;
 }
-.lottery-form .lottery-btn {
+
+/* 验证码输入行 */
+.lottery-code-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.lottery-input--code {
+  flex: 1;
+  letter-spacing: 4px;
+  text-align: center;
+}
+.lottery-btn--code {
   flex-shrink: 0;
-  width: auto;
-  height: 36px;
+  height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--lottery-primary);
+  background: transparent;
+  border: 1px solid var(--lottery-primary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.lottery-btn--code:hover:not(:disabled) {
+  background: rgba(244, 63, 94, 0.05);
+}
+.lottery-btn--code:disabled {
+  color: #a1a1aa;
+  border-color: #e4e4e7;
+  cursor: not-allowed;
+}
+
+.lottery-form__hint {
+  font-size: 12px;
+  color: var(--lottery-text-muted);
+  text-align: center;
+}
+.lottery-form__actions {
+  display: flex;
+  gap: 8px;
+}
+.lottery-form .lottery-btn {
+  flex: 1;
+  height: 40px;
   padding: 0 16px;
   font-size: 14px;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 .lottery-form .lottery-btn--secondary {
   background: transparent;
@@ -477,6 +547,44 @@
 }
 .lottery-form .lottery-btn--secondary:hover {
   background: #f4f4f5;
+}
+
+/* 登录提示区域 */
+.lottery-login-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.lottery-login-hint__text {
+  font-size: 13px;
+  color: var(--lottery-text-muted);
+  text-align: center;
+  margin: 0;
+}
+
+/* 参与条件提示 */
+.lottery-requirement {
+  text-align: center;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #92400e;
+}
+
+/* 错误提示 */
+.lottery-error {
+  text-align: center;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #dc2626;
 }
 
 /* 成功提示 */
@@ -635,6 +743,51 @@
   opacity: 0.6;
 }
 
+/* 验证码行 */
+.lottery-wheel__form {
+  flex-direction: column;
+}
+.lottery-wheel__code-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+.lottery-wheel__code-input {
+  flex: 1;
+  letter-spacing: 4px;
+  text-align: center;
+}
+.lottery-wheel__code-btn {
+  flex-shrink: 0;
+  height: 42px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  background: linear-gradient(180deg, #f97316 0%, #ea580c 100%);
+  border: none;
+  border-radius: 21px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);
+  transition: all 0.15s;
+}
+.lottery-wheel__code-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ea580c 0%, #c2410c 100%);
+  box-shadow: 0 3px 8px rgba(234, 88, 12, 0.4);
+}
+.lottery-wheel__code-btn:disabled {
+  color: #fff;
+  background: #d4d4d8;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.lottery-wheel__error {
+  color: #dc2626;
+  font-size: 13px;
+  text-align: center;
+}
+
 /* 结果 */
 .lottery-wheel__result {
   text-align: center;
@@ -650,6 +803,13 @@
 }
 .lottery-wheel__result--error {
   color: #dc2626;
+}
+
+.lottery-wheel__hint {
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+  margin-top: 8px;
 }
 
 /* 结果 */
@@ -965,3 +1125,6 @@
 .lottery-s2__winner-prize {
   color: #fbbf24;
 }
+
+
+/* ==================== 覆盖外部样式 ==================== */

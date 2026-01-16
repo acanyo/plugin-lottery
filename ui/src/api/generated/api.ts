@@ -18,4 +18,5 @@ export * from './api/lottery-activity-v1alpha1-api';
 export * from './api/lottery-participant-v1alpha1-api';
 export * from './api/lottery-v1alpha1-console-api';
 export * from './api/lottery-v1alpha1-public-api';
+export * from './api/lottery-v1alpha1-uc-api';
 

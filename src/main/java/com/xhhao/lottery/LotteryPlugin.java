@@ -23,7 +23,6 @@ public class LotteryPlugin extends BasePlugin {
     @Override
     public void start() {
         schemeManager.register(LotteryActivity.class, indexSpecs -> {
-            // 状态索引（用于筛选）
             indexSpecs.add(IndexSpecs.<LotteryActivity, String>single("status.state", String.class)
                 .indexFunc(item -> Optional.ofNullable(item.getStatus())
                     .map(LotteryActivity.LotteryActivityStatus::getState)
@@ -41,7 +40,6 @@ public class LotteryPlugin extends BasePlugin {
                     .orElse(null)));
         });
         schemeManager.register(LotteryParticipant.class, indexSpecs -> {
-            // token 索引（用于查询参与记录）
             indexSpecs.add(IndexSpecs.<LotteryParticipant, String>single("spec.token", String.class)
                 .indexFunc(item -> Optional.ofNullable(item.getSpec())
                     .map(LotteryParticipant.LotteryParticipantSpec::getToken)
@@ -50,6 +48,12 @@ public class LotteryPlugin extends BasePlugin {
                 IndexSpecs.<LotteryParticipant, String>single("spec.activityName", String.class)
                     .indexFunc(item -> Optional.ofNullable(item.getSpec())
                         .map(LotteryParticipant.LotteryParticipantSpec::getActivityName)
+                        .orElse(null)));
+            indexSpecs.add(
+                IndexSpecs.<LotteryParticipant, String>single("spec.isWinner", String.class)
+                    .indexFunc(item -> Optional.ofNullable(item.getSpec())
+                        .map(LotteryParticipant.LotteryParticipantSpec::getIsWinner)
+                        .map(String::valueOf)
                         .orElse(null)));
         });
     }

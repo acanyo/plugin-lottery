@@ -59,7 +59,8 @@ haloPlugin {
                 pathsToMatch = [
                     "/apis/lottery.xhhao.com/v1alpha1/**",
                     "/apis/api.lottery.xhhao.com/v1alpha1/**",
-                    "/apis/console.api.lottery.xhhao.com/v1alpha1/**"
+                    "/apis/console.api.lottery.xhhao.com/v1alpha1/**",
+                    "/apis/uc.api.lottery.xhhao.com/v1alpha1/**"
                 ]
             }
         }

@@ -1,0 +1,17 @@
+apiVersion: notification.halo.run/v1alpha1
+kind: ReasonType
+metadata:
+  name: lottery-verification-code
+spec:
+  displayName: "抽奖邮箱验证码"
+  description: "发送邮箱验证码用于匿名参与抽奖"
+  properties:
+    - name: email
+      type: string
+      description: "邮箱地址"
+    - name: code
+      type: string
+      description: "验证码"
+    - name: expireMinutes
+      type: string
+      description: "有效期（分钟）"

@@ -1,0 +1,28 @@
+apiVersion: notification.halo.run/v1alpha1
+kind: NotificationTemplate
+metadata:
+  name: template-lottery-winning
+spec:
+  reasonSelector:
+    reasonType: lottery-winning
+    language: default
+  template:
+    title: "🎊 恭喜您中奖了！"
+    rawBody: |
+      恭喜您，[[${participantName}]]！
+
+      您在抽奖活动「[[${activityTitle}]]」中获得了奖品：[[${prizeName}]]
+
+      中奖时间：[[${winTime}]]
+
+      请及时联系活动主办方领取奖品。
+    htmlBody: |
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
+        <p style="color: #333; font-size: 15px; margin: 0 0 16px;">恭喜您，<strong>[[${participantName}]]</strong>！</p>
+        <p style="color: #333; font-size: 15px; margin: 0 0 16px;">您在抽奖活动「<strong>[[${activityTitle}]]</strong>」中获得了奖品：</p>
+        <div style="background: #fff8e6; padding: 16px; border-radius: 6px; text-align: center; margin: 16px 0;">
+          <span style="font-size: 18px; font-weight: 600; color: #b45309;">[[${prizeName}]]</span>
+        </div>
+        <p style="color: #666; font-size: 13px; margin: 0;">中奖时间：[[${winTime}]]</p>
+        <p style="color: #666; font-size: 13px; margin: 16px 0 0;">请及时联系活动主办方领取奖品。</p>
+      </div>

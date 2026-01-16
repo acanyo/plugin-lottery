@@ -1,29 +1,56 @@
 <script lang="ts">
-  import type { LotteryData, StatusResult, ParticipateResult, Prize } from "../types";
+  import type { LotteryData, StatusResult, ParticipateResult, Prize, ParticipationType, SendCodeResult } from "../types";
   import confetti from "canvas-confetti";
 
   let {
     lotteryData,
     statusResult,
     onParticipate,
+    verificationEnabled = false,
+    onSendCode,
+    commentEmail = "",
   }: {
     lotteryData: LotteryData;
     statusResult?: StatusResult;
     participating?: boolean;
-    onParticipate?: (email: string, displayName?: string) => Promise<ParticipateResult | undefined>;
+    onParticipate?: (email: string, displayName?: string, verificationCode?: string) => Promise<ParticipateResult | undefined>;
+    verificationEnabled?: boolean;
+    onSendCode?: (email: string) => Promise<SendCodeResult>;
+    commentEmail?: string;
   } = $props();
 
   let email = $state("");
+  let verificationCode = $state("");
   let showEmailInput = $state(false);
   let spinning = $state(false);
+  let sendingCode = $state(false);
+  let countdown = $state(0);
   let rotation = $state(0);
   let result = $state<ParticipateResult>();
   let canvasEl = $state<HTMLCanvasElement>();
+  let errorMsg = $state("");
 
   // 真实奖品
   let realPrizes = $derived((lotteryData?.prizes || []) as Prize[]);
   // 谢谢参与格子数量
   let thankYouSlots = $derived(lotteryData?.thankYouSlots ?? 2);
+  
+  // 参与类型提示文案
+  const participationHint: Record<ParticipationType, string> = {
+    NONE: "输入邮箱参与抽奖",
+    LOGIN: "🔐 需要登录后参与",
+    COMMENT: "💬 需要在本文评论，刷新页面后参与",
+    LOGIN_AND_COMMENT: "🔐💬 需要登录并评论后参与",
+  };
+
+  // 是否需要邮箱输入（只有 NONE 类型需要）
+  let needsEmail = $derived(lotteryData?.participationType === "NONE");
+  // COMMENT 类型
+  let isCommentType = $derived(lotteryData?.participationType === "COMMENT");
+  // 是否需要验证码（NONE 和 COMMENT 类型需要，登录类型不需要）
+  let needsVerification = $derived(verificationEnabled && (needsEmail || isCommentType));
+  // 是否需要显示输入表单
+  let needsForm = $derived(needsEmail || (isCommentType && needsVerification));
   
   // 合并后的所有格子（奖品 + 谢谢参与交替排列）
   interface WheelSlot {
@@ -68,9 +95,7 @@
   });
 
   let canParticipate = $derived(
-    lotteryData?.state === "RUNNING" && 
-    !statusResult?.participated && 
-    (!lotteryData?.participationType || lotteryData?.participationType === "NONE")
+    lotteryData?.state === "RUNNING" && !statusResult?.participated
   );
 
   function drawWheel() {
@@ -181,16 +206,30 @@
   }
 
   async function handleSpin() {
-    if (!email || spinning || !onParticipate) return;
+    if (spinning || !onParticipate) return;
+    // NONE 类型必须填写邮箱，COMMENT 类型使用评论邮箱
+    const targetEmail = isCommentType ? commentEmail : email;
+    if (needsEmail && !email) return;
+    // 需要验证码时必须填写
+    if (needsVerification && !verificationCode) {
+      errorMsg = "请输入验证码";
+      return;
+    }
+    
     spinning = true;
     result = undefined;
+    errorMsg = "";
 
-    const apiResult = await onParticipate(email, undefined);
+    const apiResult = await onParticipate(targetEmail, undefined, needsVerification ? verificationCode : undefined);
     if (!apiResult?.success) {
       spinning = false;
       result = apiResult;
+      errorMsg = apiResult?.message || "";
       return;
     }
+    // 参与成功后清除验证码和倒计时
+    verificationCode = "";
+    countdown = 0;
 
     const slots = wheelSlots();
     const sliceAngle = 360 / slots.length;
@@ -220,15 +259,58 @@
     }, 4000);
   }
 
+  async function handleSendCode() {
+    const targetEmail = isCommentType ? commentEmail : email;
+    if (!targetEmail || sendingCode || !onSendCode) return;
+    
+    sendingCode = true;
+    errorMsg = "";
+    const codeResult = await onSendCode(targetEmail);
+    sendingCode = false;
+    
+    if (codeResult.success) {
+      countdown = 60;
+      const timer = setInterval(() => {
+        countdown--;
+        if (countdown <= 0) {
+          clearInterval(timer);
+        }
+      }, 1000);
+    } else {
+      errorMsg = codeResult.message;
+    }
+  }
+
   function handleEmailSubmit(e: Event) {
     e.preventDefault();
-    if (email) { showEmailInput = false; handleSpin(); }
+    // NONE 类型需要邮箱，COMMENT 类型需要验证码
+    if (needsEmail && !email) {
+      errorMsg = "请输入邮箱";
+      return;
+    }
+    if (needsVerification && !verificationCode) {
+      errorMsg = "请输入验证码";
+      return;
+    }
+    showEmailInput = false; 
+    handleSpin(); 
   }
 
   function handleCenterClick() {
     if (canParticipate && !spinning) {
-      if (email) handleSpin();
-      else showEmailInput = true;
+      if (needsForm) {
+        // 需要表单：NONE 类型需要邮箱，COMMENT 类型需要验证码
+        if (needsEmail && email && (!needsVerification || verificationCode)) {
+          handleSpin();
+        } else if (isCommentType && commentEmail && (!needsVerification || verificationCode)) {
+          handleSpin();
+        } else {
+          showEmailInput = true;
+        }
+      } else {
+        // 不需要表单（登录类型）：直接抽奖
+        handleSpin();
+      }
     }
   }
 </script>
@@ -260,12 +342,31 @@
     </div>
   </div>
 
-  <!-- 输入邮箱 -->
-  {#if showEmailInput && canParticipate}
-    <form onsubmit={handleEmailSubmit} class="lottery-wheel__form">
-      <input type="email" bind:value={email} placeholder="输入邮箱参与抽奖" required />
-      <button type="submit" disabled={!email}>确定</button>
-    </form>
+  <!-- 输入表单 -->
+  {#if showEmailInput && canParticipate && needsForm}
+    {#if isCommentType && !commentEmail}
+      <div class="lottery-wheel__hint lottery-wheel__hint--warning">请先在本文评论，刷新页面后参与</div>
+    {:else}
+      <form onsubmit={handleEmailSubmit} class="lottery-wheel__form">
+        {#if needsEmail}
+          <input type="email" bind:value={email} placeholder="输入邮箱参与抽奖" required />
+        {/if}
+        {#if needsVerification}
+          <div class="lottery-wheel__code-row">
+            <input type="text" bind:value={verificationCode} placeholder="验证码" required maxlength="6" class="lottery-wheel__code-input" />
+            <button type="button" onclick={handleSendCode} disabled={(needsEmail && !email) || (isCommentType && !commentEmail) || sendingCode || countdown > 0} class="lottery-wheel__code-btn">
+              {#if sendingCode}发送中{:else if countdown > 0}{countdown}s{:else}获取验证码{/if}
+            </button>
+          </div>
+        {/if}
+        {#if errorMsg}
+          <div class="lottery-wheel__error">{errorMsg}</div>
+        {/if}
+        <button type="submit" disabled={(needsEmail && !email) || (needsVerification && !verificationCode)}>确定</button>
+      </form>
+    {/if}
+  {:else if canParticipate && !needsForm && !result}
+    <div class="lottery-wheel__hint">{participationHint[lotteryData?.participationType || "LOGIN"]}</div>
   {/if}
 
   <!-- 结果 -->

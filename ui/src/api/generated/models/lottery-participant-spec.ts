@@ -31,6 +31,12 @@ export interface LotteryParticipantSpec {
      * @type {string}
      * @memberof LotteryParticipantSpec
      */
+    'activityTitle'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof LotteryParticipantSpec
+     */
     'commentName'?: string;
     /**
      * 

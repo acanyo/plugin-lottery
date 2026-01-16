@@ -17,5 +17,6 @@ export * from './prize';
 export * from './recover-request';
 export * from './remove-operation';
 export * from './replace-operation';
+export * from './send-code-request';
 export * from './test-operation';
 export * from './winner';

@@ -13,3 +13,6 @@ rules:
   - apiGroups: ["api.lottery.xhhao.com"]
     resources: ["*"]
     verbs: ["*"]
+  - nonResourceURLs:
+      - "/apis/api.lottery.xhhao.com/v1alpha1/lotteries/**"
+    verbs: ["get", "post"]

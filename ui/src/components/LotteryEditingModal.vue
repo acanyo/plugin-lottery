@@ -26,7 +26,6 @@ const formState = ref<LotteryActivity>({
     description: "",
     lotteryType: "SCHEDULED",
     participationType: "NONE",
-    targetPostName: "",
     startTime: undefined,
     endTime: undefined,
     drawTime: undefined,
@@ -138,13 +137,6 @@ watch(
   { immediate: true }
 );
 
-const needsTargetPost = computed(() => {
-  return (
-    formState.value.spec?.participationType === "COMMENT" ||
-    formState.value.spec?.participationType === "LOGIN_AND_COMMENT"
-  );
-});
-
 const isInstantLottery = computed(() => {
   return (
     formState.value.spec?.lotteryType === "WHEEL" ||
@@ -214,15 +206,7 @@ const noPrizeProbability = computed(() => Math.max(0, 100 - totalProbability.val
         label="参与条件"
         type="radio"
         name="participationType"
-      />
-      <FormKit
-        v-if="needsTargetPost"
-        v-model="formState.spec!.targetPostName"
-        name="targetPostName"
-        label="关联文章"
-        type="text"
-        placeholder="请输入文章的 name"
-        validation="required"
+        help="评论参与会验证用户在抽奖卡片所在文章下的评论"
       />
 
       <!-- 时间设置 -->

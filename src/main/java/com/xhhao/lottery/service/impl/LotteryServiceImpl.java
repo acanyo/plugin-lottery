@@ -11,6 +11,7 @@ import com.xhhao.lottery.entity.LotteryActivity.Winner;
 import com.xhhao.lottery.entity.LotteryParticipant;
 import com.xhhao.lottery.entity.LotteryParticipant.LotteryParticipantSpec;
 import com.xhhao.lottery.query.LotteryActivityQuery;
+import com.xhhao.lottery.service.LotteryNotificationService;
 import com.xhhao.lottery.service.LotteryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,9 +29,15 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import run.halo.app.core.extension.User;
+import run.halo.app.core.extension.content.Comment;
+import com.xhhao.lottery.util.SecurityUtil;
 
 import static run.halo.app.extension.index.query.Queries.equal;
 
@@ -39,11 +46,10 @@ import static run.halo.app.extension.index.query.Queries.equal;
 public class LotteryServiceImpl implements LotteryService {
 
     private final ReactiveExtensionClient client;
+    private final LotteryNotificationService notificationService;
 
     private static final String TOKEN_SALT = "lottery_plugin_salt_2024";
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$");
-
-    // ==================== 公开接口实现 ====================
 
     @Override
     public Mono<LotteryActivity> getActivity(String activityName) {
@@ -78,9 +84,138 @@ public class LotteryServiceImpl implements LotteryService {
         return validateEmail(email)
             .then(client.get(LotteryActivity.class, activityName))
             .switchIfEmpty(Mono.error(new IllegalArgumentException("活动不存在")))
-            .flatMap(activity -> validateParticipation(activity)
+            .flatMap(activity -> validateParticipation(activity, ParticipationType.NONE)
                 .then(checkDuplicate(activityName, email))
-                .then(doParticipate(activity, email, displayName, ipAddress)));
+                .then(doParticipate(activity, email, displayName, null, null, ipAddress)));
+    }
+
+    @Override
+    public Mono<LotteryParticipant> participateWithLogin(String activityName, String ipAddress) {
+        return getCurrentUser()
+            .switchIfEmpty(Mono.error(new IllegalStateException("请先登录")))
+            .flatMap(user -> {
+                String email = user.getSpec().getEmail();
+                String username = user.getMetadata().getName();
+                String displayName = user.getSpec().getDisplayName();
+                
+                if (email == null || email.isBlank()) {
+                    return Mono.error(new IllegalStateException("用户邮箱未设置"));
+                }
+                
+                return client.get(LotteryActivity.class, activityName)
+                    .switchIfEmpty(Mono.error(new IllegalArgumentException("活动不存在")))
+                    .flatMap(activity -> validateParticipation(activity, ParticipationType.LOGIN)
+                        .then(checkDuplicate(activityName, email))
+                        .then(doParticipate(activity, email, displayName, username, null, ipAddress)));
+            });
+    }
+
+    @Override
+    public Mono<LotteryParticipant> participateWithComment(String activityName, String postName, String ipAddress) {
+        return ReactiveSecurityContextHolder.getContext()
+            .flatMap(securityContext -> {
+                Authentication authentication = securityContext.getAuthentication();
+                
+                if (authentication != null && !(authentication instanceof AnonymousAuthenticationToken)) {
+                    String username = authentication.getName();
+                    
+                    return client.get(LotteryActivity.class, activityName)
+                        .switchIfEmpty(Mono.error(new IllegalArgumentException("活动不存在")))
+                        .flatMap(activity -> {
+                            String targetPost = (postName != null && !postName.isBlank()) 
+                                ? postName 
+                                : activity.getSpec().getTargetPostName();
+                                
+                            if (targetPost == null || targetPost.isBlank()) {
+                                return Mono.error(new IllegalStateException("无法确定关联文章"));
+                            }
+                            
+                            return validateParticipation(activity, ParticipationType.COMMENT)
+                                .then(getCurrentUser())
+                                .flatMap(user -> {
+                                    String email = user.getSpec().getEmail();
+                                    String displayName = user.getSpec().getDisplayName();
+                                    
+                                    if (email == null || email.isBlank()) {
+                                        return Mono.error(new IllegalStateException("用户邮箱未设置"));
+                                    }
+                                    
+                                    return checkDuplicate(activityName, email)
+                                        .then(findCommentByUsername(targetPost, username))
+                                        .switchIfEmpty(Mono.error(new IllegalStateException("请先在文章下评论")))
+                                        .flatMap(comment -> {
+                                            String commentName = comment.getMetadata().getName();
+                                            return doParticipate(activity, email, displayName, username, commentName, ipAddress);
+                                        });
+                                });
+                        });
+                }
+                
+                return Mono.error(new IllegalStateException("评论参与需要提供邮箱或登录"));
+            })
+            .switchIfEmpty(Mono.error(new IllegalStateException("评论参与需要提供邮箱或登录")));
+    }
+
+    @Override
+    public Mono<LotteryParticipant> participateWithCommentByEmail(String activityName, String email, String postName, String ipAddress) {
+        return validateEmail(email)
+            .then(client.get(LotteryActivity.class, activityName))
+            .switchIfEmpty(Mono.error(new IllegalArgumentException("活动不存在")))
+            .flatMap(activity -> {
+                String targetPost = (postName != null && !postName.isBlank()) 
+                    ? postName 
+                    : activity.getSpec().getTargetPostName();
+                    
+                if (targetPost == null || targetPost.isBlank()) {
+                    return Mono.error(new IllegalStateException("无法确定关联文章"));
+                }
+                
+                return validateParticipation(activity, ParticipationType.COMMENT)
+                    .then(checkDuplicate(activityName, email))
+                    .then(findCommentByEmail(targetPost, email))
+                    .switchIfEmpty(Mono.error(new IllegalStateException("请先使用此邮箱在文章下评论")))
+                    .flatMap(comment -> {
+                        String commentName = comment.getMetadata().getName();
+                        String displayName = comment.getSpec().getOwner().getDisplayName();
+                        return doParticipate(activity, email, displayName, null, commentName, ipAddress);
+                    });
+            });
+    }
+
+    @Override
+    public Mono<LotteryParticipant> participateWithLoginAndComment(String activityName, String postName, String ipAddress) {
+        return getCurrentUser()
+            .switchIfEmpty(Mono.error(new IllegalStateException("请先登录")))
+            .flatMap(user -> {
+                String email = user.getSpec().getEmail();
+                String username = user.getMetadata().getName();
+                String displayName = user.getSpec().getDisplayName();
+                
+                if (email == null || email.isBlank()) {
+                    return Mono.error(new IllegalStateException("用户邮箱未设置"));
+                }
+                
+                return client.get(LotteryActivity.class, activityName)
+                    .switchIfEmpty(Mono.error(new IllegalArgumentException("活动不存在")))
+                    .flatMap(activity -> {
+                        var targetPost = (postName != null && !postName.isBlank()) 
+                            ? postName 
+                            : activity.getSpec().getTargetPostName();
+                            
+                        if (targetPost == null || targetPost.isBlank()) {
+                            return Mono.error(new IllegalStateException("无法确定关联文章"));
+                        }
+                        
+                        return validateParticipation(activity, ParticipationType.LOGIN_AND_COMMENT)
+                            .then(checkDuplicate(activityName, email))
+                            .then(findCommentByUsername(targetPost, username))
+                            .switchIfEmpty(Mono.error(new IllegalStateException("请先在文章下评论")))
+                            .flatMap(comment -> {
+                                String commentName = comment.getMetadata().getName();
+                                return doParticipate(activity, email, displayName, username, commentName, ipAddress);
+                            });
+                    });
+            });
     }
 
     @Override
@@ -104,7 +239,6 @@ public class LotteryServiceImpl implements LotteryService {
     public Mono<Winner> getWinnerByToken(String activityName, String token) {
         return findByToken(token).flatMap(participant -> {
             var spec = participant.getSpec();
-            // 即时开奖：直接从参与记录获取
             if (Boolean.TRUE.equals(spec.getIsWinner())) {
                 return Mono.just(createWinner(
                     Objects.requireNonNullElse(spec.getUsername(), spec.getEmail()),
@@ -112,7 +246,6 @@ public class LotteryServiceImpl implements LotteryService {
                     spec.getWinTime()
                 ));
             }
-            // 定时开奖：从活动 winners 列表查找
             return findWinnerFromActivity(activityName, spec);
         });
     }
@@ -128,8 +261,6 @@ public class LotteryServiceImpl implements LotteryService {
             throw new IllegalStateException("生成 token 失败", e);
         }
     }
-
-    // ==================== 状态管理 ====================
 
     private Mono<LotteryActivity> checkAndUpdateState(LotteryActivity activity) {
         var status = getStatus(activity);
@@ -161,7 +292,6 @@ public class LotteryServiceImpl implements LotteryService {
         }
 
         var spec = activity.getSpec();
-        // drawTime 优先，其次 endTime，都为 null 则不自动开奖
         var drawTime = spec.getDrawTime() != null ? spec.getDrawTime() : spec.getEndTime();
 
         if (drawTime != null && Instant.now().isAfter(drawTime)
@@ -171,11 +301,6 @@ public class LotteryServiceImpl implements LotteryService {
         return Mono.just(activity);
     }
 
-    // ==================== 抽奖核心逻辑 ====================
-
-    /**
-     * 执行定时开奖
-     */
     private Mono<LotteryActivity> executeDraw(LotteryActivity activity) {
         var prizes = activity.getSpec().getPrizes();
         if (prizes == null || prizes.isEmpty()) {
@@ -199,11 +324,7 @@ public class LotteryServiceImpl implements LotteryService {
             });
     }
 
-    /**
-     * 为所有参与者抽奖（定时开奖用）
-     */
     private List<Winner> drawForParticipants(List<LotteryParticipant> participants, List<Prize> prizes) {
-        // 构建奖品剩余数量 Map
         var remaining = prizes.stream()
             .collect(Collectors.toMap(
                 Prize::getName,
@@ -212,7 +333,6 @@ public class LotteryServiceImpl implements LotteryService {
                 HashMap::new
             ));
 
-        // 随机打乱参与者
         var shuffled = new ArrayList<>(participants);
         Collections.shuffle(shuffled, ThreadLocalRandom.current());
 
@@ -220,12 +340,10 @@ public class LotteryServiceImpl implements LotteryService {
         var winners = new ArrayList<Winner>();
 
         for (var participant : shuffled) {
-            // 检查是否还有奖品
             if (remaining.values().stream().noneMatch(v -> v > 0)) {
                 break;
             }
 
-            // 按概率抽奖
             drawByProbability(prizes, remaining, random).ifPresent(prize -> {
                 var spec = participant.getSpec();
                 winners.add(createWinner(
@@ -240,17 +358,9 @@ public class LotteryServiceImpl implements LotteryService {
         return winners;
     }
 
-    /**
-     * 按概率抽奖（通用方法）
-     * @param prizes 奖品列表
-     * @param remaining 剩余数量 Map（null 时使用 prize 自身的 remaining/quantity）
-     * @param random 随机数生成器
-     * @return 中奖的奖品
-     */
     private Optional<Prize> drawByProbability(List<Prize> prizes,
                                                Map<String, Integer> remaining,
                                                Random random) {
-        // 筛选可用奖品（有库存且有概率）
         record PrizeWithProb(Prize prize, int probability) {}
 
         var available = prizes.stream()
@@ -266,12 +376,10 @@ public class LotteryServiceImpl implements LotteryService {
         int totalProb = available.stream().mapToInt(PrizeWithProb::probability).sum();
         int rand = random.nextInt(100);
 
-        // 未中奖（随机数超出总概率范围）
         if (rand >= totalProb) {
             return Optional.empty();
         }
 
-        // 按概率区间匹配
         int cumulative = 0;
         for (var item : available) {
             cumulative += item.probability();
@@ -283,28 +391,23 @@ public class LotteryServiceImpl implements LotteryService {
         return Optional.empty();
     }
 
-    /**
-     * 执行即时开奖（大转盘/刮刮乐）
-     */
     private Mono<LotteryParticipant> executeInstantDraw(LotteryActivity activity,
                                                          String email, String displayName,
+                                                         String username, String commentName,
                                                          String token, String ipAddress) {
-        var activityName = activity.getMetadata().getName();
         var prizes = activity.getSpec().getPrizes();
 
         if (prizes == null || prizes.isEmpty()) {
-            return createParticipant(activityName, email, displayName, token, ipAddress, null);
+            return createParticipant(activity, email, displayName, username, commentName, token, ipAddress, null);
         }
 
         var result = drawByProbability(prizes, null, ThreadLocalRandom.current());
 
         return result
             .map(prize -> updatePrizeRemaining(activity, prize.getName())
-                .flatMap(ignored -> createParticipant(activityName, email, displayName, token, ipAddress, prize.getName())))
-            .orElseGet(() -> createParticipant(activityName, email, displayName, token, ipAddress, null));
+                .flatMap(ignored -> createParticipant(activity, email, displayName, username, commentName, token, ipAddress, prize.getName())))
+            .orElseGet(() -> createParticipant(activity, email, displayName, username, commentName, token, ipAddress, null));
     }
-
-    // ==================== 参与验证 ====================
 
     private Mono<Void> validateEmail(String email) {
         if (email == null || email.isBlank()) {
@@ -316,12 +419,18 @@ public class LotteryServiceImpl implements LotteryService {
         return Mono.empty();
     }
 
-    private Mono<Void> validateParticipation(LotteryActivity activity) {
+    private Mono<Void> validateParticipation(LotteryActivity activity, ParticipationType expectedType) {
         var spec = activity.getSpec();
         var status = getStatus(activity);
 
-        if (spec.getParticipationType() != ParticipationType.NONE) {
-            return Mono.error(new IllegalStateException("该活动不支持匿名参与"));
+        if (spec.getParticipationType() != expectedType) {
+            String msg = switch (spec.getParticipationType()) {
+                case NONE -> "该活动仅支持匿名参与";
+                case LOGIN -> "该活动需要登录参与";
+                case COMMENT -> "该活动需要评论后参与";
+                case LOGIN_AND_COMMENT -> "该活动需要登录并评论后参与";
+            };
+            return Mono.error(new IllegalStateException(msg));
         }
         if (status.getState() != State.RUNNING) {
             return Mono.error(new IllegalStateException("活动未在进行中"));
@@ -350,14 +459,15 @@ public class LotteryServiceImpl implements LotteryService {
     }
 
     private Mono<LotteryParticipant> doParticipate(LotteryActivity activity, String email,
-                                                    String displayName, String ipAddress) {
+                                                    String displayName, String username,
+                                                    String commentName, String ipAddress) {
         var activityName = activity.getMetadata().getName();
         var token = generateToken(activityName, email);
         var lotteryType = activity.getSpec().getLotteryType();
 
         Mono<LotteryParticipant> participateMono = switch (lotteryType) {
-            case WHEEL, DRAW -> executeInstantDraw(activity, email, displayName, token, ipAddress);
-            case null, default -> createParticipant(activityName, email, displayName, token, ipAddress, null);
+            case WHEEL, DRAW -> executeInstantDraw(activity, email, displayName, username, commentName, token, ipAddress);
+            case null, default -> createParticipant(activity, email, displayName, username, commentName, token, ipAddress, null);
         };
 
         return participateMono.flatMap(p -> updateParticipantCount(activityName).thenReturn(p));
@@ -427,17 +537,22 @@ public class LotteryServiceImpl implements LotteryService {
         return client.update(activity);
     }
 
-    private Mono<LotteryParticipant> createParticipant(String activityName, String email,
-                                                        String displayName, String token,
+    private Mono<LotteryParticipant> createParticipant(LotteryActivity activity, String email,
+                                                        String displayName, String username,
+                                                        String commentName, String token,
                                                         String ipAddress, String prizeName) {
+        
         var participant = new LotteryParticipant();
         participant.setMetadata(new Metadata());
         participant.getMetadata().setGenerateName("participant-");
 
         var spec = new LotteryParticipantSpec();
-        spec.setActivityName(activityName);
+        spec.setActivityName(activity.getMetadata().getName());
+        spec.setActivityTitle(activity.getSpec().getTitle());
         spec.setEmail(email);
         spec.setDisplayName(displayName);
+        spec.setUsername(username);
+        spec.setCommentName(commentName);
         spec.setToken(token);
         spec.setParticipateTime(Instant.now());
         spec.setIpAddress(ipAddress);
@@ -451,7 +566,54 @@ public class LotteryServiceImpl implements LotteryService {
         }
 
         participant.setSpec(spec);
-        return client.create(participant);
+        return client.create(participant)
+            .flatMap(p -> {
+                Mono<Void> notification;
+                var lotteryType = activity.getSpec().getLotteryType();
+                boolean isInstantDraw = lotteryType == LotteryType.WHEEL || lotteryType == LotteryType.DRAW;
+                
+                
+                if (isInstantDraw) {
+                    if (prizeName != null) {
+                        notification = notificationService.sendWinningNotification(p, activity, prizeName);
+                    } else {
+                        notification = notificationService.sendInstantNoPrizeNotification(p, activity);
+                    }
+                } else if (prizeName != null) {
+                    notification = notificationService.sendWinningNotification(p, activity, prizeName);
+                } else {
+                    notification = notificationService.sendParticipateNotification(p, activity);
+                }
+                return notification.onErrorResume(e -> Mono.empty()).thenReturn(p);
+            });
+    }
+
+    private Mono<User> getCurrentUser() {
+        return SecurityUtil.getCurrentUser(client);
+    }
+
+    private Mono<Comment> findCommentByEmail(String postName, String email) {
+        return client.list(Comment.class, comment -> {
+                var ref = comment.getSpec().getSubjectRef();
+                var owner = comment.getSpec().getOwner();
+                return ref != null 
+                    && postName.equals(ref.getName())
+                    && "Email".equals(owner.getKind())
+                    && email.equalsIgnoreCase(owner.getName());
+            }, null)
+            .next();
+    }
+
+    private Mono<Comment> findCommentByUsername(String postName, String username) {
+        return client.list(Comment.class, comment -> {
+                var ref = comment.getSpec().getSubjectRef();
+                var owner = comment.getSpec().getOwner();
+                return ref != null 
+                    && postName.equals(ref.getName())
+                    && "User".equals(owner.getKind())
+                    && username.equals(owner.getName());
+            }, null)
+            .next();
     }
 
     private Mono<Void> updateParticipantCount(String activityName) {
@@ -464,5 +626,72 @@ public class LotteryServiceImpl implements LotteryService {
                 return client.update(activity);
             })
             .then();
+    }
+
+    @Override
+    public Mono<CommentCheckResult> checkComment(String postName, String email) {
+        return ReactiveSecurityContextHolder.getContext()
+            .flatMap(securityContext -> {
+                Authentication authentication = securityContext.getAuthentication();
+                
+                if (authentication != null && !(authentication instanceof AnonymousAuthenticationToken)) {
+                    var username = authentication.getName();
+                    return findCommentByUsername(postName, username)
+                        .map(comment -> {
+                            var result = new CommentCheckResult();
+                            result.setHasCommented(true);
+                            result.setIsLoggedIn(true);
+                            result.setMessage("已评论，可以参与");
+                            return result;
+                        })
+                        .switchIfEmpty(Mono.fromSupplier(() -> {
+                            var result = new CommentCheckResult();
+                            result.setHasCommented(false);
+                            result.setIsLoggedIn(true);
+                            result.setMessage("请先在文章下评论");
+                            return result;
+                        }));
+                }
+                
+                if (email != null && !email.isBlank()) {
+                    return findCommentByEmail(postName, email)
+                        .map(comment -> {
+                            var result = new CommentCheckResult();
+                            result.setHasCommented(true);
+                            result.setIsLoggedIn(false);
+                            result.setEmail(email);
+                            result.setMessage("已评论，可以参与");
+                            return result;
+                        })
+                        .switchIfEmpty(Mono.fromSupplier(() -> {
+                            var result = new CommentCheckResult();
+                            result.setHasCommented(false);
+                            result.setIsLoggedIn(false);
+                            result.setEmail(email);
+                            result.setMessage("请先使用此邮箱在文章下评论");
+                            return result;
+                        }));
+                }
+                
+                var result = new CommentCheckResult();
+                result.setHasCommented(false);
+                result.setIsLoggedIn(false);
+                result.setMessage("请先评论或登录");
+                return Mono.just(result);
+            })
+            .switchIfEmpty(Mono.fromSupplier(() -> {
+                if (email != null && !email.isBlank()) {
+                    var result = new CommentCheckResult();
+                    result.setHasCommented(false);
+                    result.setIsLoggedIn(false);
+                    result.setMessage("请先评论或登录");
+                    return result;
+                }
+                var result = new CommentCheckResult();
+                result.setHasCommented(false);
+                result.setIsLoggedIn(false);
+                result.setMessage("请先评论或登录");
+                return result;
+            }));
     }
 }

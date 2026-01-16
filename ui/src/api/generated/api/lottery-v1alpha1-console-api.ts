@@ -152,6 +152,57 @@ export const LotteryV1alpha1ConsoleApiAxiosParamCreator = function (configuratio
                 options: localVarRequestOptions,
             };
         },
+        /**
+         * 查询活动参与者列表
+         * @param {string} name 
+         * @param {string} [page] 页码
+         * @param {string} [size] 每页数量
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listParticipants: async (name: string, page?: string, size?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'name' is not null or undefined
+            assertParamExists('listParticipants', 'name', name)
+            const localVarPath = `/apis/console.api.lottery.xhhao.com/v1alpha1/lotteries/{name}/participants`
+                .replace(`{${"name"}}`, encodeURIComponent(String(name)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication basicAuth required
+            // http basic authentication required
+            setBasicAuthToObject(localVarRequestOptions, configuration)
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (page !== undefined) {
+                localVarQueryParameter['page'] = page;
+            }
+
+            if (size !== undefined) {
+                localVarQueryParameter['size'] = size;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
     }
 };
 
@@ -193,6 +244,20 @@ export const LotteryV1alpha1ConsoleApiFp = function(configuration?: Configuratio
             const localVarOperationServerBasePath = operationServerMap['LotteryV1alpha1ConsoleApi.listLotteries']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
+        /**
+         * 查询活动参与者列表
+         * @param {string} name 
+         * @param {string} [page] 页码
+         * @param {string} [size] 每页数量
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listParticipants(name: string, page?: string, size?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListResult>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listParticipants(name, page, size, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['LotteryV1alpha1ConsoleApi.listParticipants']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
     }
 };
 
@@ -220,6 +285,15 @@ export const LotteryV1alpha1ConsoleApiFactory = function (configuration?: Config
          */
         listLotteries(requestParameters: LotteryV1alpha1ConsoleApiListLotteriesRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<ListResult> {
             return localVarFp.listLotteries(requestParameters.page, requestParameters.size, requestParameters.labelSelector, requestParameters.fieldSelector, requestParameters.sort, requestParameters.keyword, requestParameters.state, requestParameters.participationType, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 查询活动参与者列表
+         * @param {LotteryV1alpha1ConsoleApiListParticipantsRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listParticipants(requestParameters: LotteryV1alpha1ConsoleApiListParticipantsRequest, options?: RawAxiosRequestConfig): AxiosPromise<ListResult> {
+            return localVarFp.listParticipants(requestParameters.name, requestParameters.page, requestParameters.size, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -302,6 +376,34 @@ export interface LotteryV1alpha1ConsoleApiListLotteriesRequest {
 }
 
 /**
+ * Request parameters for listParticipants operation in LotteryV1alpha1ConsoleApi.
+ * @export
+ * @interface LotteryV1alpha1ConsoleApiListParticipantsRequest
+ */
+export interface LotteryV1alpha1ConsoleApiListParticipantsRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof LotteryV1alpha1ConsoleApiListParticipants
+     */
+    readonly name: string
+
+    /**
+     * 页码
+     * @type {string}
+     * @memberof LotteryV1alpha1ConsoleApiListParticipants
+     */
+    readonly page?: string
+
+    /**
+     * 每页数量
+     * @type {string}
+     * @memberof LotteryV1alpha1ConsoleApiListParticipants
+     */
+    readonly size?: string
+}
+
+/**
  * LotteryV1alpha1ConsoleApi - object-oriented interface
  * @export
  * @class LotteryV1alpha1ConsoleApi
@@ -328,6 +430,17 @@ export class LotteryV1alpha1ConsoleApi extends BaseAPI {
      */
     public listLotteries(requestParameters: LotteryV1alpha1ConsoleApiListLotteriesRequest = {}, options?: RawAxiosRequestConfig) {
         return LotteryV1alpha1ConsoleApiFp(this.configuration).listLotteries(requestParameters.page, requestParameters.size, requestParameters.labelSelector, requestParameters.fieldSelector, requestParameters.sort, requestParameters.keyword, requestParameters.state, requestParameters.participationType, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 查询活动参与者列表
+     * @param {LotteryV1alpha1ConsoleApiListParticipantsRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof LotteryV1alpha1ConsoleApi
+     */
+    public listParticipants(requestParameters: LotteryV1alpha1ConsoleApiListParticipantsRequest, options?: RawAxiosRequestConfig) {
+        return LotteryV1alpha1ConsoleApiFp(this.configuration).listParticipants(requestParameters.name, requestParameters.page, requestParameters.size, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

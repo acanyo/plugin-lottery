@@ -24,6 +24,8 @@ const props = withDefaults(
 const emit = defineEmits<{
   (event: "editing", lottery: LotteryActivity): void;
   (event: "delete", lottery: LotteryActivity): void;
+  (event: "winners", lottery: LotteryActivity): void;
+  (event: "participants", lottery: LotteryActivity): void;
 }>();
 
 const participationTypeMap: Record<string, string> = {
@@ -36,6 +38,7 @@ const participationTypeMap: Record<string, string> = {
 const lotteryTypeMap: Record<string, string> = {
   SCHEDULED: "定时开奖",
   WHEEL: "大转盘",
+  DRAW: "抽签",
   SCRATCH: "刮刮乐",
 };
 
@@ -132,6 +135,8 @@ const handleDraw = async () => {
     </template>
     <template #dropdownItems>
       <VDropdownItem @click="emit('editing', lottery)">编辑</VDropdownItem>
+      <VDropdownItem @click="emit('participants', lottery)">参与人列表</VDropdownItem>
+      <VDropdownItem @click="emit('winners', lottery)">中奖记录</VDropdownItem>
       <VDropdownItem
         v-if="lottery.status?.state === 'RUNNING' && lottery.spec?.lotteryType === 'SCHEDULED'"
         @click="handleDraw"

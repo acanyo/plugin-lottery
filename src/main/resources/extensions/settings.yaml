@@ -1,0 +1,101 @@
+apiVersion: v1alpha1
+kind: Setting
+metadata:
+  name: plugin-lottery-settings
+spec:
+  forms:
+    - group: notification
+      label: 通知设置
+      formSchema:
+        - $el: a
+          attrs:
+            href: "https://docs.lik.cc"
+            class: "py-4 block"
+            target: "_blank"
+            style:
+              color: "#1890ff"
+              fontSize: "0.875em"
+              display: "flex"
+              align-items: "center"
+          children:
+            - $el: span
+              children: "查看 抽奖 帮助文档"
+            - $el: img
+              attrs:
+                src: "/plugins/lottery/assets/static/img/link.svg"
+                width: "14px"
+                height: "14px"
+                style:
+                  margin-left: "4px"
+        - $el: span
+          children: "Halo交流群"
+        - $el: div
+          attrs:
+            style:
+              display: "flex"
+              gap: "8px"
+              marginTop: "8px"
+          children:
+            - $el: a
+              attrs:
+                href: "https://qm.qq.com/q/mPJeUOtG5G"
+                target: "_blank"
+                style:
+                  color: "#1890ff"
+                  fontSize: "0.875em"
+                  padding: "4px 8px"
+                  backgroundColor: "#f0f8ff"
+                  borderRadius: "4px"
+                  textDecoration: "none"
+                  border: "1px solid #d1e7ff"
+              children: "加入群聊 766203360"
+            - $el: button
+              attrs:
+                type: "button"
+                onclick: "navigator.clipboard.writeText('766203360').then(() => alert('群号已复制到剪贴板'))"
+                style:
+                  color: "#1890ff"
+                  fontSize: "0.875em"
+                  padding: "4px 8px"
+                  backgroundColor: "#f0f8ff"
+                  borderRadius: "4px"
+                  border: "1px solid #d1e7ff"
+                  cursor: "pointer"
+              children: "复制群号"
+        - $formkit: checkbox
+          label: 参与成功通知
+          name: enableParticipateNotification
+          id: enableParticipateNotification
+          help: 用户参与抽奖成功后发送邮件通知
+          value: false
+        - $formkit: checkbox
+          label: 中奖通知
+          name: enableWinningNotification
+          id: enableWinningNotification
+          help: 用户中奖后发送邮件通知
+          value: true
+    - group: verification
+      label: 验证码设置
+      formSchema:
+        - $formkit: checkbox
+          label: 匿名参与需要邮箱验证码
+          name: enableEmailVerification
+          id: enableEmailVerification
+          help: 开启后，匿名用户参与抽奖需要先验证邮箱（防止同一人使用多个邮箱刷奖）
+          value: true
+        - $formkit: number
+          label: 验证码有效期（分钟）
+          name: verificationCodeExpireMinutes
+          if: "$get(enableEmailVerification).value"
+          min: 1
+          max: 30
+          help: 验证码的有效时间
+          value: 5
+        - $formkit: number
+          label: 发送间隔（秒）
+          name: verificationCodeIntervalSeconds
+          if: "$get(enableEmailVerification).value"
+          min: 30
+          max: 300
+          help: 同一邮箱两次发送验证码的最小间隔
+          value: 60

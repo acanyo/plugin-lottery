@@ -1,7 +1,9 @@
 package com.xhhao.lottery.endpoint;
 
 import com.xhhao.lottery.entity.LotteryActivity;
+import com.xhhao.lottery.service.EmailVerificationService;
 import com.xhhao.lottery.service.LotteryService;
+import com.xhhao.lottery.service.SettingConfigGetter;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.webflux.core.fn.SpringdocRouteBuilder;
@@ -30,11 +32,19 @@ import io.swagger.v3.oas.annotations.enums.ParameterIn;
 public class LotteryPublicEndpoint implements CustomEndpoint {
 
     private final LotteryService lotteryService;
+    private final EmailVerificationService emailVerificationService;
+    private final SettingConfigGetter settingConfigGetter;
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
         var tag = "LotteryV1alpha1Public";
         return SpringdocRouteBuilder.route()
+            .GET("/lotteries/settings", this::getPublicSettings,
+                builder -> builder.operationId("GetPublicSettings")
+                    .tag(tag).description("获取公开设置"))
+            .GET("/lotteries/verification-enabled", this::checkVerificationEnabled,
+                builder -> builder.operationId("CheckVerificationEnabled")
+                    .tag(tag).description("检查是否启用邮箱验证"))
             .GET("/lotteries/{name}", this::getActivity,
                 builder -> builder.operationId("GetLotteryActivity")
                     .tag(tag).description("获取活动详情")
@@ -44,16 +54,40 @@ public class LotteryPublicEndpoint implements CustomEndpoint {
                     .tag(tag).description("匿名参与抽奖")
                     .parameter(parameterBuilder().name("name").in(ParameterIn.PATH).required(true))
                     .requestBody(requestBodyBuilder().implementation(ParticipateRequest.class)))
+            .POST("/lotteries/{name}/participate-login", this::participateWithLogin,
+                builder -> builder.operationId("ParticipateLotteryWithLogin")
+                    .tag(tag).description("登录用户参与抽奖")
+                    .parameter(parameterBuilder().name("name").in(ParameterIn.PATH).required(true)))
+            .POST("/lotteries/{name}/participate-comment", this::participateWithComment,
+                builder -> builder.operationId("ParticipateLotteryWithComment")
+                    .tag(tag).description("评论参与抽奖（支持登录用户和匿名评论）")
+                    .parameter(parameterBuilder().name("name").in(ParameterIn.PATH).required(true))
+                    .requestBody(requestBodyBuilder().implementation(ParticipateRequest.class)))
+            .POST("/lotteries/{name}/participate-login-comment", this::participateWithLoginAndComment,
+                builder -> builder.operationId("ParticipateLotteryWithLoginAndComment")
+                    .tag(tag).description("登录+评论参与抽奖")
+                    .parameter(parameterBuilder().name("name").in(ParameterIn.PATH).required(true)))
             .GET("/lotteries/{name}/status", this::getStatus,
                 builder -> builder.operationId("GetLotteryStatus")
                     .tag(tag).description("查询参与状态")
                     .parameter(parameterBuilder().name("name").in(ParameterIn.PATH).required(true))
                     .parameter(parameterBuilder().name("token").in(ParameterIn.QUERY).required(false)))
+            .GET("/lotteries/{name}/comment-check", this::checkComment,
+                builder -> builder.operationId("CheckCommentStatus")
+                    .tag(tag).description("检查当前用户是否已评论")
+                    .parameter(parameterBuilder().name("name").in(ParameterIn.PATH).required(true))
+                    .parameter(parameterBuilder().name("postName").in(ParameterIn.QUERY).required(true))
+                    .parameter(parameterBuilder().name("email").in(ParameterIn.QUERY).required(false)))
             .POST("/lotteries/{name}/recover", this::recover,
                 builder -> builder.operationId("RecoverLotteryToken")
                     .tag(tag).description("通过邮箱找回token")
                     .parameter(parameterBuilder().name("name").in(ParameterIn.PATH).required(true))
                     .requestBody(requestBodyBuilder().implementation(RecoverRequest.class)))
+            .POST("/lotteries/{name}/send-code", this::sendVerificationCode,
+                builder -> builder.operationId("SendVerificationCode")
+                    .tag(tag).description("发送邮箱验证码")
+                    .parameter(parameterBuilder().name("name").in(ParameterIn.PATH).required(true))
+                    .requestBody(requestBodyBuilder().implementation(SendCodeRequest.class)))
             .build();
     }
 
@@ -93,13 +127,148 @@ public class LotteryPublicEndpoint implements CustomEndpoint {
         String name = request.pathVariable("name");
         String ip = getClientIp(request);
         return request.bodyToMono(ParticipateRequest.class)
-            .flatMap(body -> lotteryService.participateAnonymous(name, body.getEmail(), body.getDisplayName(), ip))
+            .flatMap(body -> {
+                // 检查是否需要验证码
+                return emailVerificationService.isVerificationEnabled()
+                    .flatMap(enabled -> {
+                        if (enabled) {
+                            // 需要验证码
+                            if (body.getVerificationCode() == null || body.getVerificationCode().isBlank()) {
+                                var resp = new ParticipateResponse();
+                                resp.setSuccess(false);
+                                resp.setMessage("请先获取并输入验证码");
+                                resp.setNeedVerification(true);
+                                return ServerResponse.ok().bodyValue(resp);
+                            }
+                            // 验证验证码
+                            return emailVerificationService.verifyCode(body.getEmail(), name, body.getVerificationCode())
+                                .flatMap(valid -> {
+                                    if (!valid) {
+                                        var resp = new ParticipateResponse();
+                                        resp.setSuccess(false);
+                                        resp.setMessage("验证码错误或已过期");
+                                        resp.setNeedVerification(true);
+                                        return ServerResponse.ok().bodyValue(resp);
+                                    }
+                                    return doParticipate(name, body, ip);
+                                });
+                        }
+                        return doParticipate(name, body, ip);
+                    });
+            });
+    }
+
+    private Mono<ServerResponse> doParticipate(String name, ParticipateRequest body, String ip) {
+        return lotteryService.participateAnonymous(name, body.getEmail(), body.getDisplayName(), ip)
             .flatMap(p -> {
                 var resp = new ParticipateResponse();
                 resp.setSuccess(true);
                 resp.setMessage("参与成功");
                 resp.setToken(p.getSpec().getToken());
                 // 即时开奖结果
+                resp.setIsWinner(p.getSpec().getIsWinner());
+                resp.setPrizeName(p.getSpec().getPrizeName());
+                return ServerResponse.ok().bodyValue(resp);
+            })
+            .onErrorResume(e -> {
+                var resp = new ParticipateResponse();
+                resp.setSuccess(false);
+                resp.setMessage(e.getMessage());
+                return ServerResponse.ok().bodyValue(resp);
+            });
+    }
+
+    private Mono<ServerResponse> participateWithLogin(ServerRequest request) {
+        String name = request.pathVariable("name");
+        String ip = getClientIp(request);
+        return lotteryService.participateWithLogin(name, ip)
+            .flatMap(p -> {
+                var resp = new ParticipateResponse();
+                resp.setSuccess(true);
+                resp.setMessage("参与成功");
+                resp.setToken(p.getSpec().getToken());
+                resp.setIsWinner(p.getSpec().getIsWinner());
+                resp.setPrizeName(p.getSpec().getPrizeName());
+                return ServerResponse.ok().bodyValue(resp);
+            })
+            .onErrorResume(e -> {
+                var resp = new ParticipateResponse();
+                resp.setSuccess(false);
+                resp.setMessage(e.getMessage());
+                return ServerResponse.ok().bodyValue(resp);
+            });
+    }
+
+    private Mono<ServerResponse> participateWithComment(ServerRequest request) {
+        String name = request.pathVariable("name");
+        String ip = getClientIp(request);
+        return request.bodyToMono(ParticipateRequest.class)
+            .defaultIfEmpty(new ParticipateRequest())
+            .flatMap(body -> {
+                // COMMENT 类型必须提供邮箱（从前端 localStorage 读取）
+                if (body.getEmail() == null || body.getEmail().isBlank()) {
+                    var resp = new ParticipateResponse();
+                    resp.setSuccess(false);
+                    resp.setMessage("请先在文章下评论，刷新页面后再参与");
+                    return ServerResponse.ok().bodyValue(resp);
+                }
+                // 检查是否需要验证码
+                return emailVerificationService.isVerificationEnabled()
+                    .flatMap(enabled -> {
+                        if (enabled) {
+                            if (body.getVerificationCode() == null || body.getVerificationCode().isBlank()) {
+                                var resp = new ParticipateResponse();
+                                resp.setSuccess(false);
+                                resp.setMessage("请先获取并输入验证码");
+                                resp.setNeedVerification(true);
+                                return ServerResponse.ok().bodyValue(resp);
+                            }
+                            return emailVerificationService.verifyCode(body.getEmail(), name, body.getVerificationCode())
+                                .flatMap(valid -> {
+                                    if (!valid) {
+                                        var resp = new ParticipateResponse();
+                                        resp.setSuccess(false);
+                                        resp.setMessage("验证码错误或已过期");
+                                        resp.setNeedVerification(true);
+                                        return ServerResponse.ok().bodyValue(resp);
+                                    }
+                                    return doParticipateWithComment(name, body, ip);
+                                });
+                        }
+                        return doParticipateWithComment(name, body, ip);
+                    });
+            });
+    }
+
+    private Mono<ServerResponse> doParticipateWithComment(String name, ParticipateRequest body, String ip) {
+        return lotteryService.participateWithCommentByEmail(name, body.getEmail(), body.getPostName(), ip)
+            .flatMap(p -> {
+                var resp = new ParticipateResponse();
+                resp.setSuccess(true);
+                resp.setMessage("参与成功");
+                resp.setToken(p.getSpec().getToken());
+                resp.setIsWinner(p.getSpec().getIsWinner());
+                resp.setPrizeName(p.getSpec().getPrizeName());
+                return ServerResponse.ok().bodyValue(resp);
+            })
+            .onErrorResume(e -> {
+                var resp = new ParticipateResponse();
+                resp.setSuccess(false);
+                resp.setMessage(e.getMessage());
+                return ServerResponse.ok().bodyValue(resp);
+            });
+    }
+
+    private Mono<ServerResponse> participateWithLoginAndComment(ServerRequest request) {
+        String name = request.pathVariable("name");
+        String ip = getClientIp(request);
+        return request.bodyToMono(ParticipateRequest.class)
+            .flatMap(body -> lotteryService.participateWithLoginAndComment(name, body.getPostName(), ip))
+            .flatMap(p -> {
+                var resp = new ParticipateResponse();
+                resp.setSuccess(true);
+                resp.setMessage("参与成功");
+                resp.setToken(p.getSpec().getToken());
                 resp.setIsWinner(p.getSpec().getIsWinner());
                 resp.setPrizeName(p.getSpec().getPrizeName());
                 return ServerResponse.ok().bodyValue(resp);
@@ -146,6 +315,21 @@ public class LotteryPublicEndpoint implements CustomEndpoint {
             }));
     }
 
+    private Mono<ServerResponse> checkComment(ServerRequest request) {
+        String postName = request.queryParam("postName").orElse(null);
+        String email = request.queryParam("email").orElse(null);
+        
+        if (postName == null || postName.isBlank()) {
+            var resp = new CommentCheckResponse();
+            resp.setHasCommented(false);
+            resp.setMessage("缺少文章参数");
+            return ServerResponse.ok().bodyValue(resp);
+        }
+        
+        return lotteryService.checkComment(postName, email)
+            .flatMap(result -> ServerResponse.ok().bodyValue(result));
+    }
+
     private Mono<ServerResponse> recover(ServerRequest request) {
         String name = request.pathVariable("name");
         return request.bodyToMono(RecoverRequest.class)
@@ -184,10 +368,76 @@ public class LotteryPublicEndpoint implements CustomEndpoint {
         return request.remoteAddress().map(a -> a.getAddress().getHostAddress()).orElse("");
     }
 
+    private Mono<ServerResponse> sendVerificationCode(ServerRequest request) {
+        String name = request.pathVariable("name");
+        return request.bodyToMono(SendCodeRequest.class)
+            .flatMap(body -> {
+                if (body.getEmail() == null || body.getEmail().isBlank()) {
+                    var resp = new SendCodeResponse();
+                    resp.setSuccess(false);
+                    resp.setMessage("邮箱不能为空");
+                    return ServerResponse.ok().bodyValue(resp);
+                }
+                return emailVerificationService.sendCode(body.getEmail(), name)
+                    .flatMap(result -> {
+                        var resp = new SendCodeResponse();
+                        resp.setSuccess(result.success());
+                        resp.setMessage(result.message());
+                        return ServerResponse.ok().bodyValue(resp);
+                    });
+            });
+    }
+
+    private Mono<ServerResponse> checkVerificationEnabled(ServerRequest request) {
+        return emailVerificationService.isVerificationEnabled()
+            .flatMap(enabled -> {
+                var resp = new VerificationEnabledResponse();
+                resp.setEnabled(enabled);
+                return ServerResponse.ok().bodyValue(resp);
+            });
+    }
+
+    private Mono<ServerResponse> getPublicSettings(ServerRequest request) {
+        return settingConfigGetter.getVerificationConfig()
+            .zipWith(settingConfigGetter.getNotificationConfig())
+            .flatMap(tuple -> {
+                var resp = new PublicSettingsResponse();
+                resp.setVerification(tuple.getT1());
+                resp.setNotification(tuple.getT2());
+                return ServerResponse.ok().bodyValue(resp);
+            });
+    }
+
+    @Data
+    public static class PublicSettingsResponse {
+        private SettingConfigGetter.VerificationConfig verification;
+        private SettingConfigGetter.NotificationConfig notification;
+    }
+
     @Data
     public static class ParticipateRequest {
         private String email;
         private String displayName;
+        /** 当前文章 name（评论参与时使用） */
+        private String postName;
+        /** 邮箱验证码（启用验证时需要） */
+        private String verificationCode;
+    }
+
+    @Data
+    public static class SendCodeRequest {
+        private String email;
+    }
+
+    @Data
+    public static class SendCodeResponse {
+        private Boolean success;
+        private String message;
+    }
+
+    @Data
+    public static class VerificationEnabledResponse {
+        private Boolean enabled;
     }
 
     @Data
@@ -203,6 +453,8 @@ public class LotteryPublicEndpoint implements CustomEndpoint {
         // 即时开奖结果
         private Boolean isWinner;
         private String prizeName;
+        // 是否需要验证码
+        private Boolean needVerification;
     }
 
     @Data
@@ -229,5 +481,17 @@ public class LotteryPublicEndpoint implements CustomEndpoint {
         private List<LotteryActivity.Winner> winners;
         /** 谢谢参与格子数量（大转盘/刮刮乐使用） */
         private Integer thankYouSlots;
+    }
+
+    @Data
+    public static class CommentCheckResponse {
+        /** 是否已评论 */
+        private Boolean hasCommented;
+        /** 是否已登录 */
+        private Boolean isLoggedIn;
+        /** 评论者邮箱（用于显示） */
+        private String email;
+        /** 提示信息 */
+        private String message;
     }
 }

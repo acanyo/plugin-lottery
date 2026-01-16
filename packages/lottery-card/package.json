@@ -1,15 +1,15 @@
 {
-  "name": "@halo-dev/lottery-card",
+  "name": "@xhhao-com/lottery-card",
   "version": "1.0.0",
   "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/index.js"
+      "import": "./dist/lottery-card.js"
     },
-    "./index.css": "./dist/index.css"
+    "./style.css": "./dist/lottery-card.css"
   },
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
+  "main": "./dist/lottery-card.js",
+  "module": "./dist/lottery-card.js",
   "files": [
     "dist"
   ],

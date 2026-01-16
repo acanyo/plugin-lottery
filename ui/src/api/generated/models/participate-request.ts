@@ -32,5 +32,17 @@ export interface ParticipateRequest {
      * @memberof ParticipateRequest
      */
     'email'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ParticipateRequest
+     */
+    'postName'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ParticipateRequest
+     */
+    'verificationCode'?: string;
 }
 
