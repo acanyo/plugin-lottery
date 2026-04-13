@@ -1,11 +1,41 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { Toast, VAlert, VButton, VModal, VSpace } from "@halo-dev/components";
+import { consoleApiClient } from "@halo-dev/api-client";
 import { cloneDeep } from "lodash-es";
-import type { LotteryActivity } from "@/api/generated";
-import { lotteryActivityApi } from "@/api";
+import type { LotteryActivity, RedisConfigStatus } from "@/api/generated";
+import { lotteryActivityApi, lotteryConsoleApi } from "@/api";
 import { submitForm } from "@formkit/core";
 import { utils } from "@halo-dev/ui-shared";
+
+interface ManualAssignment {
+  prizeName?: string;
+  participantToken?: string;
+  participantIdentifier?: string;
+  participantDisplayName?: string;
+}
+
+interface PrizeManualWinner {
+  candidateKey?: string;
+}
+
+interface EditablePrize {
+  name?: string;
+  description?: string;
+  imageUrl?: string;
+  quantity?: number;
+  remaining?: number;
+  probability?: number;
+  manualWinners?: PrizeManualWinner[];
+}
+
+interface ManualWinnerCandidate {
+  key: string;
+  identifier: string;
+  displayName: string;
+  username?: string;
+  email?: string;
+}
 
 const props = withDefaults(
   defineProps<{
@@ -48,12 +78,86 @@ const formState = ref<LotteryActivity>({
 
 const modal = ref<InstanceType<typeof VModal> | null>(null);
 const saving = ref(false);
+const redisStatus = ref<RedisConfigStatus>();
+const users = ref<ManualWinnerCandidate[]>([]);
+const loadingUsers = ref(false);
 
 const isUpdateMode = computed(() => !!props.lottery);
 
 const modalTitle = computed(() => {
   return isUpdateMode.value ? "编辑抽奖活动" : "新建抽奖活动";
 });
+
+const lotteryTypeOptions = computed(() => {
+  const instantOptionDisabled = !instantLotteryAvailable.value;
+  return [
+    { label: "定时开奖", value: "SCHEDULED" },
+    {
+      label: instantOptionDisabled
+        ? "大转盘（即时开奖，需先通过 Redis 测试）"
+        : "大转盘（即时开奖）",
+      value: "WHEEL",
+      disabled: instantOptionDisabled,
+      attrs: {
+        disabled: instantOptionDisabled,
+      },
+    },
+    {
+      label: instantOptionDisabled
+        ? "抽签（即时开奖，需先通过 Redis 测试）"
+        : "抽签（即时开奖）",
+      value: "DRAW",
+      disabled: instantOptionDisabled,
+      attrs: {
+        disabled: instantOptionDisabled,
+      },
+    },
+  ];
+});
+
+const instantLotteryAvailable = computed(() => {
+  return !!redisStatus.value?.instantLotteryAvailable;
+});
+
+const effectiveRedisSourceText = computed(() => {
+  switch (redisStatus.value?.effectiveSource) {
+    case "PLUGIN":
+      return "插件配置";
+    case "HALO":
+      return "Halo 全局配置";
+    default:
+      return "未启用";
+  }
+});
+
+const effectiveRedisEndpoint = computed(() => {
+  const config = redisStatus.value?.effectiveConfig;
+  if (!config?.host) {
+    return "未检测到可用连接";
+  }
+  return `${config.host}:${config.port}`;
+});
+
+const instantLotteryAlertType = computed(() => {
+  return instantLotteryAvailable.value ? "success" : "warning";
+});
+
+const instantLotteryAlertDescription = computed(() => {
+  if (instantLotteryAvailable.value) {
+    return `当前使用${effectiveRedisSourceText.value}（${effectiveRedisEndpoint.value}），即时开奖会通过 Redis 原子扣减奖品库存。`;
+  }
+
+  return "当前未检测到可用 Redis，不能保存为即时开奖。请先在 Redis 设置页完成配置，或改用定时开奖。";
+});
+
+const fetchRedisStatus = async () => {
+  try {
+    const { data } = await lotteryConsoleApi.getLotteryRedisConfig();
+    redisStatus.value = data;
+  } catch (error) {
+    console.error("Failed to fetch redis status", error);
+  }
+};
 
 const handleSaveLottery = async () => {
   // 校验奖品
@@ -68,33 +172,54 @@ const handleSaveLottery = async () => {
     return;
   }
 
+  if (isInstantLottery.value && !instantLotteryAvailable.value) {
+    Toast.error(
+      "当前未检测到可用 Redis，不能保存为即时开奖，请先配置 Redis 或改用定时开奖"
+    );
+    return;
+  }
+
+  const payload = cloneDeep(formState.value) as LotteryActivity & {
+    spec: LotteryActivity["spec"] & {
+      manualAssignments?: ManualAssignment[];
+      prizes?: EditablePrize[];
+    };
+  };
+
+  try {
+    if (manualAssignmentEditable.value) {
+      validateManualAssignments(payload.spec.prizes || []);
+      payload.spec.manualAssignments = buildManualAssignments(payload.spec.prizes || []);
+    } else {
+      payload.spec.manualAssignments = [];
+    }
+    payload.spec.prizes = sanitizePrizes(payload.spec.prizes || []) as EditablePrize[];
+  } catch (error) {
+    Toast.error(error instanceof Error ? error.message : "指定中奖人校验失败");
+    return;
+  }
+
   // 处理时间格式
-  if (formState.value.spec?.startTime) {
-    formState.value.spec.startTime = utils.date.toISOString(
-      formState.value.spec.startTime
-    );
+  if (payload.spec?.startTime) {
+    payload.spec.startTime = utils.date.toISOString(payload.spec.startTime);
   }
-  if (formState.value.spec?.endTime) {
-    formState.value.spec.endTime = utils.date.toISOString(
-      formState.value.spec.endTime
-    );
+  if (payload.spec?.endTime) {
+    payload.spec.endTime = utils.date.toISOString(payload.spec.endTime);
   }
-  if (formState.value.spec?.drawTime) {
-    formState.value.spec.drawTime = utils.date.toISOString(
-      formState.value.spec.drawTime
-    );
+  if (payload.spec?.drawTime) {
+    payload.spec.drawTime = utils.date.toISOString(payload.spec.drawTime);
   }
 
   try {
     saving.value = true;
     if (isUpdateMode.value) {
       await lotteryActivityApi.updateLotteryActivity({
-        name: formState.value.metadata?.name || "",
-        lotteryActivity: formState.value,
+        name: payload.metadata?.name || "",
+        lotteryActivity: payload,
       });
     } else {
       await lotteryActivityApi.createLotteryActivity({
-        lotteryActivity: formState.value,
+        lotteryActivity: payload,
       });
     }
     modal.value?.close();
@@ -116,7 +241,7 @@ watch(
   (lottery) => {
     if (lottery) {
       formState.value = cloneDeep(lottery);
-      // 转换时间格式用于表单显示
+      hydratePrizeManualWinners(lottery);
       if (formState.value.spec?.startTime) {
         formState.value.spec.startTime = utils.date.toDatetimeLocal(
           formState.value.spec.startTime
@@ -132,9 +257,50 @@ watch(
           formState.value.spec.drawTime
         );
       }
+      return;
     }
+
+    formState.value = {
+      spec: {
+        title: "",
+        description: "",
+        lotteryType: "SCHEDULED",
+        participationType: "NONE",
+        startTime: undefined,
+        endTime: undefined,
+        drawTime: undefined,
+        maxParticipants: undefined,
+        allowDuplicate: false,
+        thankYouSlots: 2,
+        prizes: [],
+      },
+      apiVersion: "lottery.xhhao.com/v1alpha1",
+      kind: "LotteryActivity",
+      metadata: {
+        generateName: "lottery-",
+        name: "",
+      },
+      status: {
+        state: "PENDING",
+        participantCount: 0,
+      },
+    };
   },
   { immediate: true }
+);
+
+watch(
+  () => formState.value.spec?.lotteryType,
+  (lotteryType, previousLotteryType) => {
+    const switchedToInstant =
+      lotteryType === "WHEEL" || lotteryType === "DRAW";
+    const previousWasInstant =
+      previousLotteryType === "WHEEL" || previousLotteryType === "DRAW";
+
+    if (switchedToInstant && !previousWasInstant && !instantLotteryAvailable.value) {
+      Toast.warning("当前未检测到可用 Redis，即时开奖暂不可保存");
+    }
+  }
 );
 
 const isInstantLottery = computed(() => {
@@ -155,6 +321,120 @@ const isProbabilityExceeded = computed(() => totalProbability.value > 100);
 
 // 谢谢参与概率
 const noPrizeProbability = computed(() => Math.max(0, 100 - totalProbability.value));
+
+const manualAssignmentEditable = computed(() => {
+  return formState.value.spec?.lotteryType === "SCHEDULED";
+});
+
+const manualWinnerCandidateMap = computed(() => {
+  return new Map(users.value.map((candidate) => [candidate.key, candidate]));
+});
+
+const hydratePrizeManualWinners = (lottery?: LotteryActivity) => {
+  const groupedAssignments = new Map<string, PrizeManualWinner[]>();
+  const assignments = ((lottery?.spec as LotteryActivity["spec"] & {
+    manualAssignments?: ManualAssignment[];
+  })?.manualAssignments || []) as ManualAssignment[];
+
+  assignments.forEach((assignment) => {
+    if (!assignment?.prizeName) {
+      return;
+    }
+    const candidateKey = assignment.participantIdentifier || "";
+    const current = groupedAssignments.get(assignment.prizeName) || [];
+    current.push({ candidateKey });
+    groupedAssignments.set(assignment.prizeName, current);
+  });
+
+  ((formState.value.spec?.prizes || []) as EditablePrize[]).forEach((prize) => {
+    prize.manualWinners = groupedAssignments.get(prize.name || "") || [];
+  });
+};
+
+const sanitizePrizes = (prizes: EditablePrize[]) => {
+  return prizes.map(({ manualWinners: _manualWinners, ...prize }) => prize);
+};
+
+const buildManualAssignments = (prizes: EditablePrize[]): ManualAssignment[] => {
+  return prizes.flatMap((prize) =>
+    (prize.manualWinners || [])
+      .map((manualWinner) => manualWinnerCandidateMap.value.get(manualWinner.candidateKey || ""))
+      .filter((candidate): candidate is ManualWinnerCandidate => !!candidate)
+      .map((candidate) => ({
+        prizeName: prize.name,
+        participantIdentifier: candidate.identifier,
+        participantDisplayName: candidate.displayName,
+      }))
+  );
+};
+
+const validateManualAssignments = (prizes: EditablePrize[]) => {
+  const occupiedCandidates = new Set<string>();
+
+  for (const prize of prizes) {
+    const manualWinners = (prize.manualWinners || []).filter(
+      (winner) => winner.candidateKey
+    );
+    const quantity = Math.max(prize.quantity || 0, 0);
+
+    if (manualWinners.length > quantity) {
+      throw new Error(`奖品 ${prize.name || "未命名奖品"} 指定人数不能超过奖品数量`);
+    }
+
+    for (const manualWinner of manualWinners) {
+      const candidateKey = manualWinner.candidateKey || "";
+      if (occupiedCandidates.has(candidateKey)) {
+        throw new Error("同一个用户不能被多个奖品重复指定");
+      }
+      occupiedCandidates.add(candidateKey);
+    }
+  }
+};
+
+const fetchUsers = async () => {
+  loadingUsers.value = true;
+  try {
+    const { data } = await consoleApiClient.user.listUsers({
+      page: 1,
+      size: 5000,
+      sort: ["metadata.creationTimestamp,desc"],
+      fieldSelector: [
+        "name!=anonymousUser",
+        "name!=ghost",
+        "spec.disabled!=true",
+      ],
+    });
+
+    users.value = (data.items || []).reduce<ManualWinnerCandidate[]>(
+      (result, item) => {
+        const username = item.user.metadata.name;
+        const email = item.user.spec.email;
+        const identifier = username || email;
+        if (!identifier || item.user.spec.disabled) {
+          return result;
+        }
+        result.push({
+          key: username,
+          identifier,
+          displayName: item.user.spec.displayName || identifier,
+          username,
+          email,
+        });
+        return result;
+      },
+      []
+    );
+  } catch (error) {
+    console.error("Failed to fetch users", error);
+  } finally {
+    loadingUsers.value = false;
+  }
+};
+
+onMounted(() => {
+  fetchRedisStatus();
+  fetchUsers();
+});
 </script>
 
 <template>
@@ -185,16 +465,20 @@ const noPrizeProbability = computed(() => Math.max(0, 100 - totalProbability.val
       />
       <FormKit
         v-model="formState.spec!.lotteryType"
-        :options="[
-          { label: '定时开奖', value: 'SCHEDULED' },
-          { label: '大转盘（即时开奖）', value: 'WHEEL' },
-          { label: '抽签（即时开奖）', value: 'DRAW' },
-        ]"
+        :options="lotteryTypeOptions"
         label="抽奖类型"
         type="radio"
         name="lotteryType"
         help="定时开奖：到时间统一抽取；大转盘/抽签：参与即抽，立即出结果"
       />
+      <div v-if="isInstantLottery" class="formkit-outer">
+        <VAlert
+          :type="instantLotteryAlertType"
+          title="即时开奖依赖 Redis"
+          :description="instantLotteryAlertDescription"
+          :closable="false"
+        />
+      </div>
       <FormKit
         v-model="formState.spec!.participationType"
         :options="[
@@ -269,7 +553,16 @@ const noPrizeProbability = computed(() => Math.max(0, 100 - totalProbability.val
       <!-- 奖品设置 -->
       <div class="formkit-outer">
         <div class="formkit-label">奖品设置</div>
+        <VAlert
+          v-if="formState.spec?.lotteryType === 'SCHEDULED'"
+          type="info"
+          title="可在下方为每个奖品指定中奖人"
+          description="定时开奖支持按奖品数量指定中奖人。未指定的名额会在开奖时继续走随机抽取。"
+          :closable="false"
+          class="mb-3"
+        />
         <div
+          v-if="isInstantLottery"
           class="mb-3 rounded-md p-3 text-sm"
           :class="isProbabilityExceeded ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-600'"
         >
@@ -287,6 +580,14 @@ const noPrizeProbability = computed(() => Math.max(0, 100 - totalProbability.val
             ⚠️ 概率总和超过 100%，请调整各奖品概率
           </div>
         </div>
+        <VAlert
+          v-else-if="formState.spec?.lotteryType === 'SCHEDULED'"
+          type="info"
+          title="定时开奖按奖品数量抽取"
+          description="手动开奖和自动开奖都会按奖品数量从参与者中随机抽取，中奖概率配置不会参与计算。"
+          :closable="false"
+          class="mb-3"
+        />
       </div>
       <FormKit
         v-model="formState.spec!.prizes"
@@ -295,7 +596,6 @@ const noPrizeProbability = computed(() => Math.max(0, 100 - totalProbability.val
         add-label="添加奖品"
         empty-text="暂无奖品，请点击下方按钮添加"
         :item-labels="[
-          { type: 'image', label: '$value.imageUrl' },
           { type: 'text', label: '$value.name' },
           { type: 'text', label: 'x$value.quantity' },
         ]"
@@ -322,6 +622,7 @@ const noPrizeProbability = computed(() => Math.max(0, 100 - totalProbability.val
           validation="required"
         />
         <FormKit
+          v-if="isInstantLottery"
           type="number"
           name="probability"
           label="中奖概率 (%)"
@@ -338,6 +639,47 @@ const noPrizeProbability = computed(() => Math.max(0, 100 - totalProbability.val
           :accepts="['image/*']"
           placeholder="选择或上传图片"
         />
+        <div
+          v-if="formState.spec?.lotteryType === 'SCHEDULED'"
+          class="rounded-xl border border-orange-200 bg-orange-50 p-4"
+        >
+          <div class="mb-2 text-sm font-medium text-orange-900">指定中奖人</div>
+          <p class="mb-3 text-xs leading-6 text-orange-700">
+            可直接从后台用户里指定。未参与的用户如果被指定，开奖时会自动补录为参与者。
+          </p>
+          <VAlert
+            v-if="loadingUsers"
+            type="info"
+            title="正在加载用户列表"
+            description="稍候即可为当前奖品指定中奖人。"
+            :closable="false"
+            class="mb-3"
+          />
+          <VAlert
+            v-else-if="!users.length"
+            type="warning"
+            title="暂无可选用户"
+            description="当前没有可指定的后台用户。"
+            :closable="false"
+            class="mb-3"
+          />
+          <FormKit
+            v-else
+            type="array"
+            name="manualWinners"
+            add-label="添加指定中奖人"
+            empty-text="未指定中奖人，开奖时将随机抽取"
+          >
+            <FormKit
+              type="userSelect"
+              name="candidateKey"
+              label="中奖用户"
+              validation="required"
+              placeholder="请选择用户"
+              help="同一个用户不能在多个奖品里重复指定，人数不能超过当前奖品数量。"
+            />
+          </FormKit>
+        </div>
       </FormKit>
     </FormKit>
     <template #footer>

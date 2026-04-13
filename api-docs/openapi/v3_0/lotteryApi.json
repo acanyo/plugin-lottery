@@ -5,7 +5,7 @@
     "version" : "2.22.3"
   },
   "servers" : [ {
-    "url" : "http://localhost:61809",
+    "url" : "http://localhost:53022",
     "description" : "Generated server url"
   } ],
   "security" : [ {
@@ -13,6 +13,14 @@
     "bearerAuth" : [ ]
   } ],
   "paths" : {
+    "/apis/api.lottery.xhhao.com/v1alpha1/lotteries/settings" : {
+      "get" : {
+        "description" : "获取公开设置",
+        "operationId" : "GetPublicSettings",
+        "responses" : { },
+        "tags" : [ "LotteryV1alpha1Public" ]
+      }
+    },
     "/apis/api.lottery.xhhao.com/v1alpha1/lotteries/verification-enabled" : {
       "get" : {
         "description" : "检查是否启用邮箱验证",
@@ -367,6 +375,44 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ListResult"
+                }
+              }
+            },
+            "description" : "default response"
+          }
+        },
+        "tags" : [ "LotteryV1alpha1Console" ]
+      }
+    },
+    "/apis/console.api.lottery.xhhao.com/v1alpha1/redis-config" : {
+      "get" : {
+        "description" : "获取抽奖插件 Redis 配置与当前生效来源",
+        "operationId" : "GetLotteryRedisConfig",
+        "responses" : {
+          "default" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RedisConfigStatus"
+                }
+              }
+            },
+            "description" : "default response"
+          }
+        },
+        "tags" : [ "LotteryV1alpha1Console" ]
+      }
+    },
+    "/apis/console.api.lottery.xhhao.com/v1alpha1/redis-config/test" : {
+      "post" : {
+        "description" : "测试抽奖插件当前表单或当前生效的 Redis 配置",
+        "operationId" : "TestLotteryRedisConfig",
+        "responses" : {
+          "default" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RedisConnectionTestResult"
                 }
               }
             },
@@ -925,6 +971,59 @@
           }
         }
       },
+      "EffectiveRedisConfig" : {
+        "type" : "object",
+        "properties" : {
+          "database" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "host" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "passwordConfigured" : {
+            "type" : "boolean"
+          },
+          "port" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "source" : {
+            "type" : "string"
+          }
+        }
+      },
+      "HaloRedisConfig" : {
+        "type" : "object",
+        "properties" : {
+          "configured" : {
+            "type" : "boolean"
+          },
+          "database" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "host" : {
+            "type" : "string"
+          },
+          "passwordConfigured" : {
+            "type" : "boolean"
+          },
+          "port" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "sessionStoreType" : {
+            "type" : "string"
+          }
+        }
+      },
       "JsonPatch" : {
         "minItems" : 1,
         "uniqueItems" : true,
@@ -1086,6 +1185,12 @@
           "lotteryType" : {
             "type" : "string",
             "enum" : [ "SCHEDULED", "WHEEL", "DRAW" ]
+          },
+          "manualAssignments" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ManualAssignment"
+            }
           },
           "maxParticipants" : {
             "type" : "integer",
@@ -1250,6 +1355,23 @@
           }
         }
       },
+      "ManualAssignment" : {
+        "type" : "object",
+        "properties" : {
+          "participantDisplayName" : {
+            "type" : "string"
+          },
+          "participantIdentifier" : {
+            "type" : "string"
+          },
+          "participantToken" : {
+            "type" : "string"
+          },
+          "prizeName" : {
+            "type" : "string"
+          }
+        }
+      },
       "Metadata" : {
         "required" : [ "name" ],
         "type" : "object",
@@ -1345,6 +1467,41 @@
           }
         }
       },
+      "PluginRedisConfig" : {
+        "type" : "object",
+        "properties" : {
+          "configured" : {
+            "type" : "boolean"
+          },
+          "connectionVerified" : {
+            "type" : "boolean"
+          },
+          "database" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "host" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "port" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "verifiedAt" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "verifiedSignature" : {
+            "type" : "string"
+          },
+          "verifiedSource" : {
+            "type" : "string"
+          }
+        }
+      },
       "Prize" : {
         "type" : "object",
         "properties" : {
@@ -1375,6 +1532,53 @@
         "type" : "object",
         "properties" : {
           "email" : {
+            "type" : "string"
+          }
+        }
+      },
+      "RedisConfigStatus" : {
+        "type" : "object",
+        "properties" : {
+          "connectionVerified" : {
+            "type" : "boolean"
+          },
+          "effectiveConfig" : {
+            "$ref" : "#/components/schemas/EffectiveRedisConfig"
+          },
+          "effectiveSource" : {
+            "type" : "string"
+          },
+          "haloConfig" : {
+            "$ref" : "#/components/schemas/HaloRedisConfig"
+          },
+          "instantLotteryAvailable" : {
+            "type" : "boolean"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "pluginConfig" : {
+            "$ref" : "#/components/schemas/PluginRedisConfig"
+          }
+        }
+      },
+      "RedisConnectionTestResult" : {
+        "type" : "object",
+        "properties" : {
+          "latencyMs" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "success" : {
+            "type" : "boolean"
+          },
+          "verificationSignature" : {
             "type" : "string"
           }
         }
@@ -1444,10 +1648,16 @@
       "Winner" : {
         "type" : "object",
         "properties" : {
+          "drawSource" : {
+            "type" : "string"
+          },
           "identifier" : {
             "type" : "string"
           },
           "prizeName" : {
+            "type" : "string"
+          },
+          "sourceToken" : {
             "type" : "string"
           },
           "winTime" : {

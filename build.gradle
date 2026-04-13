@@ -14,6 +14,10 @@ repositories {
 dependencies {
     implementation platform('run.halo.tools.platform:plugin:2.22.0')
     compileOnly 'run.halo.app:api'
+    implementation('io.lettuce:lettuce-core:6.8.2.RELEASE') {
+        exclude group: 'io.projectreactor', module: 'reactor-core'
+        exclude group: 'org.reactivestreams', module: 'reactive-streams'
+    }
 
     testImplementation 'run.halo.app:api'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -73,4 +77,3 @@ haloPlugin {
         }
     }
 }
-

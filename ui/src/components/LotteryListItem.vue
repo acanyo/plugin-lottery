@@ -64,10 +64,14 @@ const handleDraw = async () => {
     cancelText: "取消",
     onConfirm: async () => {
       try {
-        await lotteryConsoleApi.drawLottery({
+        const { data } = await lotteryConsoleApi.drawLottery({
           name: props.lottery.metadata?.name as string,
         });
-        Toast.success("开奖成功");
+        if (!data.success) {
+          Toast.error(data.message || "开奖失败");
+          return;
+        }
+        Toast.success(data.message || "开奖成功");
       } catch (error) {
         console.error("Failed to draw lottery", error);
         Toast.error("开奖失败");

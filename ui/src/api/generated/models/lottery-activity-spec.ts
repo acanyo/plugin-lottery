@@ -15,6 +15,9 @@
 
 // May contain unused imports in some cases
 // @ts-ignore
+import type { ManualAssignment } from './manual-assignment';
+// May contain unused imports in some cases
+// @ts-ignore
 import type { Prize } from './prize';
 
 /**
@@ -53,6 +56,12 @@ export interface LotteryActivitySpec {
      * @memberof LotteryActivitySpec
      */
     'lotteryType'?: LotteryActivitySpecLotteryTypeEnum;
+    /**
+     * 
+     * @type {Array<ManualAssignment>}
+     * @memberof LotteryActivitySpec
+     */
+    'manualAssignments'?: Array<ManualAssignment>;
     /**
      * 
      * @type {number}

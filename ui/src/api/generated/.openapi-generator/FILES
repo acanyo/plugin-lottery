@@ -15,6 +15,8 @@ index.ts
 models/add-operation.ts
 models/copy-operation.ts
 models/draw-response.ts
+models/effective-redis-config.ts
+models/halo-redis-config.ts
 models/index.ts
 models/json-patch-inner.ts
 models/list-result.ts
@@ -25,11 +27,15 @@ models/lottery-activity.ts
 models/lottery-participant-list.ts
 models/lottery-participant-spec.ts
 models/lottery-participant.ts
+models/manual-assignment.ts
 models/metadata.ts
 models/move-operation.ts
 models/participate-request.ts
+models/plugin-redis-config.ts
 models/prize.ts
 models/recover-request.ts
+models/redis-config-status.ts
+models/redis-connection-test-result.ts
 models/remove-operation.ts
 models/replace-operation.ts
 models/send-code-request.ts

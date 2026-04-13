@@ -17,38 +17,32 @@
 /**
  * 
  * @export
- * @interface Winner
+ * @interface ManualAssignment
  */
-export interface Winner {
+export interface ManualAssignment {
     /**
      * 
      * @type {string}
-     * @memberof Winner
+     * @memberof ManualAssignment
      */
-    'drawSource'?: string;
+    'participantDisplayName'?: string;
     /**
      * 
      * @type {string}
-     * @memberof Winner
+     * @memberof ManualAssignment
      */
-    'identifier'?: string;
+    'participantIdentifier'?: string;
     /**
      * 
      * @type {string}
-     * @memberof Winner
+     * @memberof ManualAssignment
+     */
+    'participantToken'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ManualAssignment
      */
     'prizeName'?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof Winner
-     */
-    'sourceToken'?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof Winner
-     */
-    'winTime'?: string;
 }
 

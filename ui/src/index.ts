@@ -1,7 +1,9 @@
 import { definePlugin } from "@halo-dev/ui-shared";
+import type { PluginTab } from "@halo-dev/ui-shared";
 import { markRaw } from "vue";
 import LotteryList from "./views/LotteryList.vue";
 import MyWinnings from "./views/MyWinnings.vue";
+import RedisSettingsTab from "./views/RedisSettingsTab.vue";
 import LotteryCard from "./editor/index";
 import RiGiftLine from "~icons/ri/gift-line";
 
@@ -49,6 +51,16 @@ export default definePlugin({
     },
   ],
   extensionPoints: {
+    "plugin:self:tabs:create": (): PluginTab[] => {
+      return [
+        {
+          id: "lottery:redis-settings",
+          label: "Redis 设置",
+          component: markRaw(RedisSettingsTab),
+          permissions: ["plugin:lottery:manage"],
+        },
+      ];
+    },
     "default:editor:extension:create": () => {
       return [LotteryCard];
     },

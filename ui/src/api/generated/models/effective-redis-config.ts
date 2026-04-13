@@ -17,38 +17,44 @@
 /**
  * 
  * @export
- * @interface Winner
+ * @interface EffectiveRedisConfig
  */
-export interface Winner {
+export interface EffectiveRedisConfig {
+    /**
+     * 
+     * @type {number}
+     * @memberof EffectiveRedisConfig
+     */
+    'database'?: number;
     /**
      * 
      * @type {string}
-     * @memberof Winner
+     * @memberof EffectiveRedisConfig
      */
-    'drawSource'?: string;
+    'host'?: string;
     /**
      * 
      * @type {string}
-     * @memberof Winner
+     * @memberof EffectiveRedisConfig
      */
-    'identifier'?: string;
+    'password'?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof EffectiveRedisConfig
+     */
+    'passwordConfigured'?: boolean;
+    /**
+     * 
+     * @type {number}
+     * @memberof EffectiveRedisConfig
+     */
+    'port'?: number;
     /**
      * 
      * @type {string}
-     * @memberof Winner
+     * @memberof EffectiveRedisConfig
      */
-    'prizeName'?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof Winner
-     */
-    'sourceToken'?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof Winner
-     */
-    'winTime'?: string;
+    'source'?: string;
 }
 

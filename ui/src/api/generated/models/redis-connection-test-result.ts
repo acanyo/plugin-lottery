@@ -17,38 +17,38 @@
 /**
  * 
  * @export
- * @interface Winner
+ * @interface RedisConnectionTestResult
  */
-export interface Winner {
+export interface RedisConnectionTestResult {
+    /**
+     * 
+     * @type {number}
+     * @memberof RedisConnectionTestResult
+     */
+    'latencyMs'?: number;
     /**
      * 
      * @type {string}
-     * @memberof Winner
+     * @memberof RedisConnectionTestResult
      */
-    'drawSource'?: string;
+    'message'?: string;
     /**
      * 
      * @type {string}
-     * @memberof Winner
+     * @memberof RedisConnectionTestResult
      */
-    'identifier'?: string;
+    'source'?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof RedisConnectionTestResult
+     */
+    'success'?: boolean;
     /**
      * 
      * @type {string}
-     * @memberof Winner
+     * @memberof RedisConnectionTestResult
      */
-    'prizeName'?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof Winner
-     */
-    'sourceToken'?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof Winner
-     */
-    'winTime'?: string;
+    'verificationSignature'?: string;
 }
 

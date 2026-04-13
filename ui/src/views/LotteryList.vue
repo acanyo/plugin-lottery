@@ -199,6 +199,7 @@ const onParticipantsModalClose = () => {
   selectedLottery.value = undefined;
   participantsModal.value = false;
 };
+
 </script>
 
 <template>

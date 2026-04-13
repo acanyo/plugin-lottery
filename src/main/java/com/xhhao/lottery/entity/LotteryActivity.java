@@ -58,6 +58,8 @@ public class LotteryActivity extends AbstractExtension {
         private Instant drawTime;
 
         private List<Prize> prizes;
+
+        private List<ManualAssignment> manualAssignments;
         
         private Integer thankYouSlots;
         
@@ -81,6 +83,14 @@ public class LotteryActivity extends AbstractExtension {
     }
 
     @Data
+    public static class ManualAssignment {
+        private String prizeName;
+        private String participantToken;
+        private String participantIdentifier;
+        private String participantDisplayName;
+    }
+
+    @Data
     public static class LotteryActivityStatus {
         private State state;
         private Integer participantCount;
@@ -93,5 +103,7 @@ public class LotteryActivity extends AbstractExtension {
         private String identifier;  // username 或 email
         private String prizeName;
         private Instant winTime;
+        private String sourceToken;
+        private String drawSource;
     }
 }

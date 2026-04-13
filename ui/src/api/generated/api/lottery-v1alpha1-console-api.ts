@@ -25,6 +25,10 @@ import { BASE_PATH, COLLECTION_FORMATS, type RequestArgs, BaseAPI, RequiredError
 import type { DrawResponse } from '../models';
 // @ts-ignore
 import type { ListResult } from '../models';
+// @ts-ignore
+import type { RedisConfigStatus } from '../models';
+// @ts-ignore
+import type { RedisConnectionTestResult } from '../models';
 /**
  * LotteryV1alpha1ConsoleApi - axios parameter creator
  * @export
@@ -63,6 +67,43 @@ export const LotteryV1alpha1ConsoleApiAxiosParamCreator = function (configuratio
             if (name !== undefined) {
                 localVarQueryParameter['name'] = name;
             }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 获取抽奖插件 Redis 配置与当前生效来源
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getLotteryRedisConfig: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/apis/console.api.lottery.xhhao.com/v1alpha1/redis-config`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication basicAuth required
+            // http basic authentication required
+            setBasicAuthToObject(localVarRequestOptions, configuration)
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
 
     
@@ -203,6 +244,43 @@ export const LotteryV1alpha1ConsoleApiAxiosParamCreator = function (configuratio
                 options: localVarRequestOptions,
             };
         },
+        /**
+         * 测试抽奖插件当前表单或当前生效的 Redis 配置
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        testLotteryRedisConfig: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/apis/console.api.lottery.xhhao.com/v1alpha1/redis-config/test`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication basicAuth required
+            // http basic authentication required
+            setBasicAuthToObject(localVarRequestOptions, configuration)
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
     }
 };
 
@@ -223,6 +301,17 @@ export const LotteryV1alpha1ConsoleApiFp = function(configuration?: Configuratio
             const localVarAxiosArgs = await localVarAxiosParamCreator.drawLottery(name, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['LotteryV1alpha1ConsoleApi.drawLottery']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 获取抽奖插件 Redis 配置与当前生效来源
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getLotteryRedisConfig(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RedisConfigStatus>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getLotteryRedisConfig(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['LotteryV1alpha1ConsoleApi.getLotteryRedisConfig']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -258,6 +347,17 @@ export const LotteryV1alpha1ConsoleApiFp = function(configuration?: Configuratio
             const localVarOperationServerBasePath = operationServerMap['LotteryV1alpha1ConsoleApi.listParticipants']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
+        /**
+         * 测试抽奖插件当前表单或当前生效的 Redis 配置
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async testLotteryRedisConfig(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RedisConnectionTestResult>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.testLotteryRedisConfig(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['LotteryV1alpha1ConsoleApi.testLotteryRedisConfig']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
     }
 };
 
@@ -278,6 +378,14 @@ export const LotteryV1alpha1ConsoleApiFactory = function (configuration?: Config
             return localVarFp.drawLottery(requestParameters.name, options).then((request) => request(axios, basePath));
         },
         /**
+         * 获取抽奖插件 Redis 配置与当前生效来源
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getLotteryRedisConfig(options?: RawAxiosRequestConfig): AxiosPromise<RedisConfigStatus> {
+            return localVarFp.getLotteryRedisConfig(options).then((request) => request(axios, basePath));
+        },
+        /**
          * 查询抽奖活动列表
          * @param {LotteryV1alpha1ConsoleApiListLotteriesRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -294,6 +402,14 @@ export const LotteryV1alpha1ConsoleApiFactory = function (configuration?: Config
          */
         listParticipants(requestParameters: LotteryV1alpha1ConsoleApiListParticipantsRequest, options?: RawAxiosRequestConfig): AxiosPromise<ListResult> {
             return localVarFp.listParticipants(requestParameters.name, requestParameters.page, requestParameters.size, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 测试抽奖插件当前表单或当前生效的 Redis 配置
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        testLotteryRedisConfig(options?: RawAxiosRequestConfig): AxiosPromise<RedisConnectionTestResult> {
+            return localVarFp.testLotteryRedisConfig(options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -422,6 +538,16 @@ export class LotteryV1alpha1ConsoleApi extends BaseAPI {
     }
 
     /**
+     * 获取抽奖插件 Redis 配置与当前生效来源
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof LotteryV1alpha1ConsoleApi
+     */
+    public getLotteryRedisConfig(options?: RawAxiosRequestConfig) {
+        return LotteryV1alpha1ConsoleApiFp(this.configuration).getLotteryRedisConfig(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * 查询抽奖活动列表
      * @param {LotteryV1alpha1ConsoleApiListLotteriesRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
@@ -441,6 +567,16 @@ export class LotteryV1alpha1ConsoleApi extends BaseAPI {
      */
     public listParticipants(requestParameters: LotteryV1alpha1ConsoleApiListParticipantsRequest, options?: RawAxiosRequestConfig) {
         return LotteryV1alpha1ConsoleApiFp(this.configuration).listParticipants(requestParameters.name, requestParameters.page, requestParameters.size, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 测试抽奖插件当前表单或当前生效的 Redis 配置
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof LotteryV1alpha1ConsoleApi
+     */
+    public testLotteryRedisConfig(options?: RawAxiosRequestConfig) {
+        return LotteryV1alpha1ConsoleApiFp(this.configuration).testLotteryRedisConfig(options).then((request) => request(this.axios, this.basePath));
     }
 }
 
